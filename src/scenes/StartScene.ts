@@ -1,18 +1,17 @@
-import * as Phaser from "phaser"
-import GameSettings from "../config/GameSettings"
+import * as Phaser from "phaser";
 
 export class StartScene extends Phaser.Scene {
   constructor() {
-    super("StartScene")
+    super("StartScene");
   }
 
   create() {
-    const { width, height } = this.cameras.main
+    const { width, height } = this.cameras.main;
 
     // Background
     this.add
       .image(width / 2, height / 2, "background")
-      .setDisplaySize(width, height)
+      .setDisplaySize(width, height);
 
     // Title
     const titleText = this.add
@@ -25,7 +24,7 @@ export class StartScene extends Phaser.Scene {
         strokeThickness: 8,
       })
       .setOrigin(0.5)
-      .setShadow(0, 4, "#000000", 8, true, true)
+      .setShadow(0, 4, "#000000", 8, true, true);
 
     // Start Button
     const startBtn = this.add
@@ -41,28 +40,28 @@ export class StartScene extends Phaser.Scene {
       .setStyle({
         fixedWidth: 200,
         align: "center",
-      })
+      });
 
-    // Button styling tweaks (simulating CSS border radius is hard in pure canvas text, 
+    // Button styling tweaks (simulating CSS border radius is hard in pure canvas text,
     // but we can use a container or graphics if needed. For now, simple text block)
-    
+
     startBtn.on("pointerover", () => {
-      startBtn.setStyle({ backgroundColor: "#ffb3db" })
-      startBtn.setScale(1.05)
-    })
+      startBtn.setStyle({ backgroundColor: "#ffb3db" });
+      startBtn.setScale(1.05);
+    });
 
     startBtn.on("pointerout", () => {
-      startBtn.setStyle({ backgroundColor: "#ffc1e3" })
-      startBtn.setScale(1)
-    })
+      startBtn.setStyle({ backgroundColor: "#ffc1e3" });
+      startBtn.setScale(1);
+    });
 
     startBtn.on("pointerdown", () => {
-      startBtn.setStyle({ backgroundColor: "#ffa6d3" })
-      startBtn.setScale(0.95)
-    })
+      startBtn.setStyle({ backgroundColor: "#ffa6d3" });
+      startBtn.setScale(0.95);
+    });
 
     startBtn.on("pointerup", () => {
-      this.scene.start("CharacterSelectScene")
-    })
+      this.scene.start("CharacterSelectScene");
+    });
   }
 }

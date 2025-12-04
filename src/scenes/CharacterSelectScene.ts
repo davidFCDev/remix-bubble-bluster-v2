@@ -1,26 +1,26 @@
-import * as Phaser from "phaser"
-import GameSettings from "../config/GameSettings"
+import * as Phaser from "phaser";
+import GameSettings from "../config/GameSettings";
 
 export class CharacterSelectScene extends Phaser.Scene {
-  private currentIndex: number = 0
-  private charNameText!: Phaser.GameObjects.Text
-  private charLoreText!: Phaser.GameObjects.Text
-  private charSkillText!: Phaser.GameObjects.Text
-  private charPreviewSprite!: Phaser.GameObjects.Sprite
-  private charPreviewContainer!: Phaser.GameObjects.Container
+  private currentIndex: number = 0;
+  private charNameText!: Phaser.GameObjects.Text;
+  private charLoreText!: Phaser.GameObjects.Text;
+  private charSkillText!: Phaser.GameObjects.Text;
+  private charPreviewSprite!: Phaser.GameObjects.Sprite;
+  private charPreviewContainer!: Phaser.GameObjects.Container;
 
   constructor() {
-    super("CharacterSelectScene")
+    super("CharacterSelectScene");
   }
 
   create() {
-    const { width, height } = this.cameras.main
+    const { width, height } = this.cameras.main;
 
     // Create Animations first
-    this.createAnimations()
+    this.createAnimations();
 
     // Background overlay
-    this.add.rectangle(0, 0, width, height, 0x000000, 0.6).setOrigin(0)
+    this.add.rectangle(0, 0, width, height, 0x000000, 0.6).setOrigin(0);
 
     // Title
     this.add
@@ -32,28 +32,43 @@ export class CharacterSelectScene extends Phaser.Scene {
         stroke: "#000000",
         strokeThickness: 6,
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5);
 
     // Card Container
-    const cardWidth = Math.min(width * 0.8, 320)
-    const cardHeight = 450
-    const cardX = width / 2
-    const cardY = height / 2
+    const cardWidth = Math.min(width * 0.8, 320);
+    const cardHeight = 450;
+    const cardX = width / 2;
+    const cardY = height / 2;
 
-    const cardBg = this.add.graphics()
-    cardBg.fillStyle(0x0f0f0f, 0.85)
-    cardBg.lineStyle(3, 0x000000)
-    cardBg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12)
-    cardBg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12)
+    const cardBg = this.add.graphics();
+    cardBg.fillStyle(0x0f0f0f, 0.85);
+    cardBg.lineStyle(3, 0x000000);
+    cardBg.fillRoundedRect(
+      -cardWidth / 2,
+      -cardHeight / 2,
+      cardWidth,
+      cardHeight,
+      12
+    );
+    cardBg.strokeRoundedRect(
+      -cardWidth / 2,
+      -cardHeight / 2,
+      cardWidth,
+      cardHeight,
+      12
+    );
 
-    this.charPreviewContainer = this.add.container(cardX, cardY, [cardBg])
+    this.charPreviewContainer = this.add.container(cardX, cardY, [cardBg]);
 
     // Character Preview Sprite
     this.charPreviewSprite = this.add
       .sprite(0, -100, `${GameSettings.characters[0].id}_idle`)
-      .setScale(4) // 32x32 -> 128x128
-    this.charPreviewSprite.play(`${GameSettings.characters[0].id}_idle_anim`, true) // Need to create anims first
-    
+      .setScale(4); // 32x32 -> 128x128
+    this.charPreviewSprite.play(
+      `${GameSettings.characters[0].id}_idle_anim`,
+      true
+    ); // Need to create anims first
+
     // Character Info
     this.charNameText = this.add
       .text(0, 0, "", {
@@ -63,7 +78,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         stroke: "#000000",
         strokeThickness: 4,
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5);
 
     this.charLoreText = this.add
       .text(0, 40, "", {
@@ -73,7 +88,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         align: "center",
         wordWrap: { width: cardWidth - 40 },
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0.5, 0);
 
     this.charSkillText = this.add
       .text(0, 120, "", {
@@ -83,7 +98,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         align: "center",
         wordWrap: { width: cardWidth - 40 },
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0.5, 0);
 
     // Select Button
     const selectBtn = this.add
@@ -95,11 +110,11 @@ export class CharacterSelectScene extends Phaser.Scene {
         padding: { x: 20, y: 10 },
       })
       .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({ useHandCursor: true });
 
     selectBtn.on("pointerdown", () => {
-      this.selectCharacter()
-    })
+      this.selectCharacter();
+    });
 
     this.charPreviewContainer.add([
       this.charPreviewSprite,
@@ -107,7 +122,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.charLoreText,
       this.charSkillText,
       selectBtn,
-    ])
+    ]);
 
     // Navigation Arrows
     const prevBtn = this.add
@@ -119,7 +134,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         padding: { x: 10, y: 0 },
       })
       .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({ useHandCursor: true });
 
     const nextBtn = this.add
       .text(cardX + cardWidth / 2 + 40, cardY, "›", {
@@ -130,13 +145,13 @@ export class CharacterSelectScene extends Phaser.Scene {
         padding: { x: 10, y: 0 },
       })
       .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({ useHandCursor: true });
 
-    prevBtn.on("pointerdown", () => this.changeCharacter(-1))
-    nextBtn.on("pointerdown", () => this.changeCharacter(1))
-    
+    prevBtn.on("pointerdown", () => this.changeCharacter(-1));
+    nextBtn.on("pointerdown", () => this.changeCharacter(1));
+
     // Initial Update
-    this.updateCharacterDisplay()
+    this.updateCharacterDisplay();
   }
 
   createAnimations() {
@@ -150,30 +165,30 @@ export class CharacterSelectScene extends Phaser.Scene {
           }),
           frameRate: 8,
           repeat: -1,
-        })
+        });
       }
-    })
+    });
   }
 
   changeCharacter(delta: number) {
     this.currentIndex =
       (this.currentIndex + delta + GameSettings.characters.length) %
-      GameSettings.characters.length
-    this.updateCharacterDisplay()
+      GameSettings.characters.length;
+    this.updateCharacterDisplay();
   }
 
   updateCharacterDisplay() {
-    const char = GameSettings.characters[this.currentIndex]
-    this.charNameText.setText(char.name)
-    this.charLoreText.setText(char.lore)
-    this.charSkillText.setText(`Skill: ${char.skillDesc}`)
-    
-    this.charPreviewSprite.setTexture(`${char.id}_idle`)
-    this.charPreviewSprite.play(`${char.id}_idle_anim`)
+    const char = GameSettings.characters[this.currentIndex];
+    this.charNameText.setText(char.name);
+    this.charLoreText.setText(char.lore);
+    this.charSkillText.setText(`Skill: ${char.skillDesc}`);
+
+    this.charPreviewSprite.setTexture(`${char.id}_idle`);
+    this.charPreviewSprite.play(`${char.id}_idle_anim`);
   }
 
   selectCharacter() {
-    const selectedChar = GameSettings.characters[this.currentIndex]
-    this.scene.start("GameScene", { character: selectedChar })
+    const selectedChar = GameSettings.characters[this.currentIndex];
+    this.scene.start("GameScene", { character: selectedChar });
   }
 }
