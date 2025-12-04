@@ -5,9 +5,11 @@ export class CharacterSelectScene extends Phaser.Scene {
   private currentIndex: number = 0;
   private charNameText!: Phaser.GameObjects.Text;
   private charLoreText!: Phaser.GameObjects.Text;
-  private charSkillText!: Phaser.GameObjects.Text;
+  private charSkillNameText!: Phaser.GameObjects.Text;
+  private charSkillDescText!: Phaser.GameObjects.Text;
   private charPreviewSprite!: Phaser.GameObjects.Sprite;
   private charPreviewContainer!: Phaser.GameObjects.Container;
+  private selectBtn!: Phaser.GameObjects.Container;
 
   constructor() {
     super("CharacterSelectScene");
@@ -24,10 +26,11 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Title
     this.add
-      .text(width / 2, height * 0.15, "CHOOSE YOUR\nCHARACTER", {
+      .text(width / 2, height * 0.1, "CHOOSE YOUR\nCHARACTER", {
         fontFamily: "Pixelify Sans",
-        fontSize: "40px",
-        color: "#ffd166",
+        fontSize: "48px",
+        color: "#B7FF00", // Neon Green
+        fontStyle: "bold",
         align: "center",
         stroke: "#000000",
         strokeThickness: 6,
@@ -35,10 +38,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Card Container
-    const cardWidth = Math.min(width * 0.95, 420); // Increased width even more
-    const cardHeight = 650; // Increased height significantly
+    // Calculate width to leave space for arrows (approx 100px each side)
+    const cardWidth = width - 250; 
+    const cardHeight = height * 0.65; // Reduced height
     const cardX = width / 2;
-    const cardY = height / 2;
+    const cardY = height / 2 + 40; // Shift down slightly more
 
     const cardBg = this.add.graphics();
     cardBg.fillStyle(0x111111, 0.95);
@@ -62,8 +66,8 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Character Preview Sprite
     this.charPreviewSprite = this.add
-      .sprite(0, -180, `${GameSettings.characters[0].id}_idle`) // Moved up more
-      .setScale(6); // Larger sprite (was 5)
+      .sprite(0, -cardHeight * 0.3, `${GameSettings.characters[0].id}_idle`) // Moved up more
+      .setScale(7); // Even Larger sprite
 
     if (this.charPreviewSprite.texture) {
       this.charPreviewSprite.texture.setFilter(
@@ -78,10 +82,10 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Character Info
     this.charNameText = this.add
-      .text(0, -40, "", {
+      .text(0, -cardHeight * 0.05, "", {
         // Moved up
         fontFamily: "Pixelify Sans",
-        fontSize: "42px", // Larger font
+        fontSize: "56px", // Much Larger font
         color: "#B7FF00",
         fontStyle: "bold",
         stroke: "#000000",
@@ -90,20 +94,29 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.charLoreText = this.add
-      .text(0, 30, "", {
+      .text(0, cardHeight * 0.02, "", { // Closer to name
         fontFamily: "Pixelify Sans",
-        fontSize: "20px", // Larger font
+        fontSize: "24px",
         color: "#FFFFFF",
         align: "center",
-        wordWrap: { width: cardWidth - 60 },
+        wordWrap: { width: cardWidth - 80 },
       })
       .setOrigin(0.5, 0);
 
-    this.charSkillText = this.add
-      .text(0, 160, "", {
-        // Moved down slightly
+    this.charSkillNameText = this.add
+      .text(0, cardHeight * 0.15, "", {
         fontFamily: "Pixelify Sans",
-        fontSize: "20px", // Larger font
+        fontSize: "32px", // Larger font
+        color: "#B7FF00", // Neon Green
+        align: "center",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5, 0);
+
+    this.charSkillDescText = this.add
+      .text(0, cardHeight * 0.22, "", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "26px", // Larger font
         color: "#00FFFF", // Cyan
         align: "center",
         wordWrap: { width: cardWidth - 60 },
@@ -112,34 +125,74 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     // Select Button
-    const selectBtn = this.add.container(0, 260); // Moved down
-    const btnBg = this.add
-      .rectangle(0, 0, 240, 70, 0xb7ff00)
-      .setInteractive({ useHandCursor: true }); // Larger button
-    const btnTxt = this.add
+    const btnWidth = 280;
+    const btnHeight = 70;
+    const btnY = cardHeight / 2 - 30; // Moved down slightly
+
+    this.selectBtn = this.add.container(0, btnY);
+
+    // Button Background (Rounded Graphics)
+    const btnBg = this.add.graphics();
+    btnBg.fillStyle(0xb7ff00, 1); // Neon Green
+    btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 15);
+    // No stroke
+
+    // Make interactive using a geom shape since Graphics doesn't have size by default
+    const hitArea = new Phaser.Geom.Rectangle(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight);
+    this.selectBtn.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
+
+    const btnText = this.add
       .text(0, 0, "SELECT", {
         fontFamily: "Pixelify Sans",
-        fontSize: "32px", // Larger text
+        fontSize: "36px",
         color: "#000000",
         fontStyle: "bold",
       })
       .setOrigin(0.5);
 
-    selectBtn.add([btnBg, btnTxt]);
+    this.selectBtn.add([btnBg, btnText]);
 
-    btnBg.on("pointerdown", () => {
+    this.selectBtn.on("pointerdown", () => {
       this.selectCharacter();
     });
 
-    btnBg.on("pointerover", () => btnBg.setFillStyle(0xffffff));
-    btnBg.on("pointerout", () => btnBg.setFillStyle(0xb7ff00));
+    this.selectBtn.on("pointerover", () => {
+      btnBg.clear();
+      btnBg.fillStyle(0xffffff, 1); // White hover
+      btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 15);
+      // No stroke
+      
+      btnText.setColor("#B7FF00"); // Neon Green Text
+      this.tweens.add({
+        targets: this.selectBtn,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 100,
+      });
+    });
+
+    this.selectBtn.on("pointerout", () => {
+      btnBg.clear();
+      btnBg.fillStyle(0xb7ff00, 1); // Neon Green normal
+      btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 15);
+      // No stroke
+
+      btnText.setColor("#000000");
+      this.tweens.add({
+        targets: this.selectBtn,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 100,
+      });
+    });
 
     this.charPreviewContainer.add([
       this.charPreviewSprite,
       this.charNameText,
       this.charLoreText,
-      this.charSkillText,
-      selectBtn,
+      this.charSkillNameText,
+      this.charSkillDescText,
+      this.selectBtn,
     ]);
 
     // Navigation Arrows
@@ -147,7 +200,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       .text(cardX - cardWidth / 2 - 60, cardY, "‹", {
         fontFamily: "Pixelify Sans",
         fontSize: "80px",
-        color: "#ffd166",
+        color: "#ffffff", // White
         padding: { x: 10, y: 0 },
       })
       .setOrigin(0.5)
@@ -157,7 +210,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       .text(cardX + cardWidth / 2 + 60, cardY, "›", {
         fontFamily: "Pixelify Sans",
         fontSize: "80px",
-        color: "#ffd166",
+        color: "#ffffff", // White
         padding: { x: 10, y: 0 },
       })
       .setOrigin(0.5)
@@ -197,7 +250,10 @@ export class CharacterSelectScene extends Phaser.Scene {
     const char = GameSettings.characters[this.currentIndex];
     this.charNameText.setText(char.name);
     this.charLoreText.setText(char.lore);
-    this.charSkillText.setText(`Skill: ${char.skillDesc}`);
+    
+    const [skillName, skillDesc] = char.skillDesc.split(": ");
+    this.charSkillNameText.setText(`~ ${skillName} ~`);
+    this.charSkillDescText.setText(skillDesc);
 
     this.charPreviewSprite.setTexture(`${char.id}_idle`);
     if (this.charPreviewSprite.texture) {

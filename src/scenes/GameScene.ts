@@ -423,11 +423,12 @@ export class GameScene extends Phaser.Scene {
 
     // Whitey Skill Check
     if (
-      color === "#FFFFFF" &&
       this.selectedCharacter.id === "Whitey" &&
       this.whiteyWildShotsLeft > 0
     ) {
       this.currentBubble.isWild = true;
+      this.currentBubble.color = "#FFFFFF";
+      this.applySkillVisuals(this.currentBubble, "Whitey");
       this.whiteyWildShotsLeft--;
     }
 
@@ -541,6 +542,24 @@ export class GameScene extends Phaser.Scene {
 
       if (bubble.sprite) {
         bubble.sprite.setPosition(bubble.x, bubble.y);
+        
+        // Rotate special bubbles
+        if (bubble.isSpecial || bubble.isBomb || bubble.isWild) {
+          (bubble.sprite as Phaser.GameObjects.Container).rotation += 0.1;
+          
+          // Particle Trail
+          if (Math.random() > 0.5) {
+            const color = bubble.isSpecial ? 0xFF6600 : (bubble.isBomb ? 0x333333 : 0x00FFFF);
+            const p = this.add.circle(bubble.x, bubble.y, 3, color);
+            this.tweens.add({
+              targets: p,
+              alpha: 0,
+              scale: 0,
+              duration: 300,
+              onComplete: () => p.destroy()
+            });
+          }
+        }
       }
 
       // Wall Collision
@@ -1108,24 +1127,16 @@ export class GameScene extends Phaser.Scene {
     if (this.selectedCharacter.id === "Pinky") {
       this.currentBubble.color = "#FF6600";
       this.currentBubble.isSpecial = true;
-      if (this.currentBubble.sprite instanceof Phaser.GameObjects.Arc) {
-        this.currentBubble.sprite.setFillStyle(
-          Phaser.Display.Color.HexStringToColor("#FF6600").color
-        );
-      }
+      this.applySkillVisuals(this.currentBubble, "Pinky");
     } else if (this.selectedCharacter.id === "Bluey") {
       this.currentBubble.color = "#000000";
       this.currentBubble.isBomb = true;
-      if (this.currentBubble.sprite instanceof Phaser.GameObjects.Arc) {
-        this.currentBubble.sprite.setFillStyle(0x000000);
-      }
+      this.applySkillVisuals(this.currentBubble, "Bluey");
     } else if (this.selectedCharacter.id === "Whitey") {
-      this.whiteyWildShotsLeft = 3;
+      this.whiteyWildShotsLeft = 2; // Current + 2 next = 3 total
       this.currentBubble.isWild = true;
       this.currentBubble.color = "#FFFFFF";
-      if (this.currentBubble.sprite instanceof Phaser.GameObjects.Arc) {
-        this.currentBubble.sprite.setFillStyle(0xffffff);
-      }
+      this.applySkillVisuals(this.currentBubble, "Whitey");
     }
 
     this.abilityAvailable = false;
@@ -1167,5 +1178,59 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(700, () => {
       particles.destroy();
     });
+  }
+
+  applySkillVisuals(bubble: Bubble, charId: string) {
+    if (!bubble.sprite || !(bubble.sprite instanceof Phaser.GameObjects.Container))
+      return;
+
+    const container = bubble.sprite;
+    container.removeAll(true); // Clear existing visuals
+
+    const size = this.BUBBLE_SIZE;
+
+    if (charId === "Pinky") {
+      // Color Blast: Orange Sun/Spike
+      const bg = this.add.circle(0, 0, size / 2 - 2, 0xFF6600);
+      bg.setStrokeStyle(2, 0xFFFFFF);
+
+      // Spikes
+      const spikes = this.add.graphics();
+      spikes.fillStyle(0xFFFF00, 0.8);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI * 2) / 8;
+        const x = Math.cos(angle) * (size / 2.5);
+        const y = Math.sin(angle) * (size / 2.5);
+        spikes.fillCircle(x, y, 4);
+      }
+
+      container.add([bg, spikes]);
+    } else if (charId === "Bluey") {
+      // Bomb Shot: Black Bomb
+      const bg = this.add.circle(0, 0, size / 2 - 2, 0x000000);
+      bg.setStrokeStyle(2, 0xFF0000); // Red danger stroke
+
+      // Fuse / Skull symbol
+      const symbol = this.add.text(0, 0, "!", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "24px",
+        color: "#FF0000",
+        fontStyle: "bold",
+      }).setOrigin(0.5);
+
+      container.add([bg, symbol]);
+    } else if (charId === "Whitey") {
+      // Color Pick: Wild White Orb
+      const bg = this.add.circle(0, 0, size / 2 - 2, 0xFFFFFF);
+
+      // Rainbow/Prismatic Stroke
+      const ring = this.add.graphics();
+      ring.lineStyle(4, 0x00FFFF); // Cyan ring
+      ring.strokeCircle(0, 0, size / 2 - 4);
+
+      const inner = this.add.circle(0, 0, size / 4, 0xFF00FF, 0.5); // Magenta core
+
+      container.add([bg, ring, inner]);
+    }
   }
 }

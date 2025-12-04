@@ -34,7 +34,7 @@ export const GameSettings = {
     {
       id: "Pinky",
       name: "Pinky",
-      lore: "A rosy spark born in the Sugarwood heart.\nLives to pop bubbles and light up the skies.",
+      lore: "A rosy spark born in the Sugarwood heart.",
       skillDesc:
         "Color Blast: Orange shot that eliminates ALL bubbles of the target color from the entire field",
       hasSkill: true,
@@ -46,7 +46,7 @@ export const GameSettings = {
     {
       id: "Bluey",
       name: "Bluey",
-      lore: "An azure explorer from the Floating Lakes.\nCalm waves, precise pops.",
+      lore: "An azure explorer from the Floating Lakes.",
       skillDesc:
         "Bomb Shot: Black explosive that destroys ALL bubbles in a large 3-tile radius area",
       hasSkill: true,
@@ -58,7 +58,7 @@ export const GameSettings = {
     {
       id: "Whitey",
       name: "Whitey",
-      lore: "A snowy guardian from the Clouded Peaks.\nSilent, sharp, a natural enemy of bubbles.",
+      lore: "A snowy guardian from the Clouded Peaks.",
       skillDesc:
         "Color Pick: 3 white shots that adapt to ANY color and eliminate connected groups (no 3-match limit)",
       hasSkill: true,
