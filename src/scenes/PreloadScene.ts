@@ -8,7 +8,10 @@ export class PreloadScene extends Phaser.Scene {
 
   preload() {
     // Load background
-    this.load.image("background", GameSettings.assets.background);
+    this.load.image("bg_start", GameSettings.assets.backgroundStart);
+    GameSettings.assets.backgroundsLevel.forEach((bg, index) => {
+      this.load.image(`bg_level_${index}`, bg);
+    });
 
     // Load loader sprite (if needed for in-game usage, though it was for splash)
     this.load.spritesheet("loader", GameSettings.assets.loader, {

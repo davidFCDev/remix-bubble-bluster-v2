@@ -48,6 +48,9 @@ export class GameScene extends Phaser.Scene {
   private limitLineGraphics!: Phaser.GameObjects.Graphics;
   private launcherSpeed: number = 0;
   private lastSpeechText: string = "";
+  private bgImage!: Phaser.GameObjects.Image;
+  private lastBgIndex: number = -1;
+  private currentMusic: Phaser.Sound.BaseSound | null = null;
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -79,12 +82,12 @@ export class GameScene extends Phaser.Scene {
     this.LIMIT_LINE_Y = height - 200;
 
     // Background
-    this.add
-      .image(width / 2, height / 2, "background")
+    this.bgImage = this.add
+      .image(width / 2, height / 2, "bg_level_0") // Default initial
       .setDisplaySize(width, height);
 
     // Background Overlay
-    this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.4);
+    this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
 
     // Limit Line
     this.limitLineGraphics = this.add.graphics();
@@ -179,21 +182,40 @@ export class GameScene extends Phaser.Scene {
         this.startGame();
         return;
       }
+      // Mobile: Start aiming (handled in pointermove)
+    });
 
-      // Zone-based control for mobile/mouse
-      // Left/Right zones (35% width) are for movement (handled in update)
-      // Center zone (30% width) is for shooting
-      const { width } = this.cameras.main;
-      const isLeft = pointer.x < width * 0.35;
-      const isRight = pointer.x > width * 0.65;
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (!this.gameStarted || this.gameOver) return;
 
-      if (!isLeft && !isRight) {
+      // Only allow aiming via touch drag on mobile
+      if (pointer.isDown && (pointer as any).pointerType === "touch") {
+        const { width, height } = this.cameras.main;
+        const launcherX = width / 2;
+        const launcherY = height - 20;
+
+        // Calculate angle from launcher to pointer
+        const angle = Math.atan2(launcherY - pointer.y, pointer.x - launcherX);
+        this.launcherAngle = Phaser.Math.Clamp(angle, 0.2, Math.PI - 0.2);
+      }
+    });
+
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (
+        this.gameStarted &&
+        !this.gameOver &&
+        (pointer as any).pointerType === "touch"
+      ) {
+        // Shoot on release (Mobile only)
         this.shootBubble();
       }
     });
 
     // Initialize Level
     this.startLevel();
+
+    // Play Music
+    this.playRandomMusic();
   }
 
   drawLimitLine() {
@@ -245,10 +267,52 @@ export class GameScene extends Phaser.Scene {
     this.gameStarted = true;
   }
 
+  playRandomMusic() {
+    if (this.currentMusic) {
+      this.currentMusic.stop();
+    }
+
+    const musicCount = GameSettings.assets.music.length;
+    const randomIndex = Phaser.Math.Between(0, musicCount - 1);
+    const musicKey = `bgm_${randomIndex}`;
+
+    this.currentMusic = this.sound.add(musicKey, {
+      volume: 0.3,
+      loop: true,
+    });
+    this.currentMusic.play();
+  }
+
+  setRandomBackground() {
+    let newIndex;
+    // Try to pick a different background, but if it's the first time (lastBgIndex -1), just pick any.
+    // We have 3 backgrounds: 0, 1, 2
+    if (this.lastBgIndex === -1) {
+      newIndex = Phaser.Math.Between(0, 2);
+    } else {
+      do {
+        newIndex = Phaser.Math.Between(0, 2);
+      } while (newIndex === this.lastBgIndex);
+    }
+
+    this.lastBgIndex = newIndex;
+    this.bgImage.setTexture(`bg_level_${newIndex}`);
+
+    const { width, height } = this.cameras.main;
+    this.bgImage.setDisplaySize(width, height);
+  }
+
   startLevel() {
+    // Set Random Background
+    this.setRandomBackground();
+
     // Reset Ceiling
     this.ceilingOffset = 0;
     this.gameContainer.y = this.GRID_OFFSET_Y;
+    this.drawCeiling(); // Force redraw immediately to avoid visual glitch during transition
+
+    // Reset Launcher Angle
+    this.launcherAngle = Math.PI / 2;
 
     // Reset Ability
     this.abilityAvailable = true;
@@ -475,31 +539,60 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  drawCeiling() {
+    this.ceilingGraphics.clear();
+
+    const ceilingY = this.GRID_OFFSET_Y + this.ceilingOffset;
+    const width = this.cameras.main.width;
+
+    // Main Piston Shaft (Dark Grey)
+    this.ceilingGraphics.fillStyle(0x222222);
+    this.ceilingGraphics.fillRect(0, 0, width, ceilingY);
+
+    // Hazard Stripes (Yellow/Black) - Full Height
+    // Draw stripes across the entire piston shaft
+    const stripeWidth = 40;
+    const stripeGap = 40;
+
+    this.ceilingGraphics.fillStyle(0xffd700, 0.2); // Yellow stripes, low opacity to look like painted on dark metal
+
+    for (
+      let i = -ceilingY;
+      i < width + ceilingY;
+      i += stripeWidth + stripeGap
+    ) {
+      this.ceilingGraphics.beginPath();
+      this.ceilingGraphics.moveTo(i, 0);
+      this.ceilingGraphics.lineTo(i + stripeWidth, 0);
+      this.ceilingGraphics.lineTo(i + stripeWidth - ceilingY, ceilingY); // Diagonal slope
+      this.ceilingGraphics.lineTo(i - ceilingY, ceilingY);
+      this.ceilingGraphics.closePath();
+      this.ceilingGraphics.fillPath();
+    }
+
+    // Piston Head / Plate (Metallic)
+    this.ceilingGraphics.fillStyle(0x111111);
+    this.ceilingGraphics.fillRect(0, ceilingY - 20, width, 20);
+
+    // Sync grid bubbles position with ceiling offset
+    this.gameContainer.y = this.GRID_OFFSET_Y + this.ceilingOffset;
+  }
+
   update(time: number, delta: number) {
     if (!this.gameStarted || this.gameOver) return;
 
-    // Input Handling (Keyboard: Arrows + A/D + Touch Zones) with Acceleration
+    // Input Handling (Keyboard: Arrows + A/D) with Acceleration
     const baseSpeed = 0.02;
     const maxSpeed = 0.05; // Reduced from 0.08
     const acceleration = 0.001; // Reduced from 0.002
 
-    const pointer = this.input.activePointer;
-    const isTouchLeft =
-      pointer.isDown && pointer.x < this.cameras.main.width * 0.35;
-    const isTouchRight =
-      pointer.isDown && pointer.x > this.cameras.main.width * 0.65;
-
-    if (this.cursors.left.isDown || this.keys.A.isDown || isTouchLeft) {
+    if (this.cursors.left.isDown || this.keys.A.isDown) {
       this.launcherSpeed = Math.min(
         this.launcherSpeed + acceleration,
         maxSpeed
       );
       this.launcherAngle += Math.max(baseSpeed, this.launcherSpeed);
-    } else if (
-      this.cursors.right.isDown ||
-      this.keys.D.isDown ||
-      isTouchRight
-    ) {
+    } else if (this.cursors.right.isDown || this.keys.D.isDown) {
       this.launcherSpeed = Math.min(
         this.launcherSpeed + acceleration,
         maxSpeed
@@ -556,53 +649,9 @@ export class GameScene extends Phaser.Scene {
     this.arrowGraphics.fillPath();
 
     // Update Ceiling Graphics (Industrial Press Style)
-    this.ceilingGraphics.clear();
+    this.drawCeiling();
 
-    const ceilingY = this.GRID_OFFSET_Y + this.ceilingOffset;
-    const width = this.cameras.main.width;
-
-    // Main Piston Shaft (Dark Grey)
-    this.ceilingGraphics.fillStyle(0x222222);
-    this.ceilingGraphics.fillRect(0, 0, width, ceilingY);
-
-    // Hazard Stripes (Yellow/Black) - Full Height
-    // Draw stripes across the entire piston shaft
-    const stripeWidth = 40;
-    const stripeGap = 40;
-
-    this.ceilingGraphics.fillStyle(0xffd700, 0.2); // Yellow stripes, low opacity to look like painted on dark metal
-
-    for (
-      let i = -ceilingY;
-      i < width + ceilingY;
-      i += stripeWidth + stripeGap
-    ) {
-      this.ceilingGraphics.beginPath();
-      this.ceilingGraphics.moveTo(i, 0);
-      this.ceilingGraphics.lineTo(i + stripeWidth, 0);
-      this.ceilingGraphics.lineTo(i + stripeWidth - ceilingY, ceilingY); // Diagonal slope
-      this.ceilingGraphics.lineTo(i - ceilingY, ceilingY);
-      this.ceilingGraphics.closePath();
-      this.ceilingGraphics.fillPath();
-    }
-
-    // Piston Head / Plate (Metallic)
-    this.ceilingGraphics.fillStyle(0x555555);
-    this.ceilingGraphics.fillRect(0, ceilingY - 20, width, 20);
-
-    // Spikes/Teeth at the bottom
-    this.ceilingGraphics.fillStyle(0x333333);
-    for (let i = 0; i < width; i += 20) {
-      this.ceilingGraphics.beginPath();
-      this.ceilingGraphics.moveTo(i, ceilingY);
-      this.ceilingGraphics.lineTo(i + 10, ceilingY + 10);
-      this.ceilingGraphics.lineTo(i + 20, ceilingY);
-      this.ceilingGraphics.closePath();
-      this.ceilingGraphics.fillPath();
-    }
-
-    // Sync grid bubbles position with ceiling offset
-    this.gameContainer.y = this.GRID_OFFSET_Y + this.ceilingOffset; // Update Flying Bubbles
+    // Update Flying Bubbles
     for (let i = this.flyingBubbles.length - 1; i >= 0; i--) {
       const bubble = this.flyingBubbles[i];
       bubble.x += bubble.velocity.x * (delta / 16);
@@ -1216,7 +1265,10 @@ export class GameScene extends Phaser.Scene {
                 }
               )
               .setOrigin(0.5);
-            this.input.on("pointerdown", () => this.scene.start("StartScene"));
+            this.input.on("pointerdown", () => {
+              if (this.currentMusic) this.currentMusic.stop();
+              this.scene.start("StartScene");
+            });
           }
         }
       }

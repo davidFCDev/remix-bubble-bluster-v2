@@ -69,15 +69,20 @@ export const GameSettings = {
     },
   ],
   assets: {
-    background:
-      "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/fondo-bubble-LrEejaB5Fy4xPW2TJzrN559v8akbG7.png?x6Ua",
+    backgroundStart:
+      "https://remix.gg/blob/Y58Z5vSLnB41/1-GwoHV7svfVDNgHPLjRtwGxOhuEWIvQ.webp?tIxK",
+    backgroundsLevel: [
+      "https://remix.gg/blob/Y58Z5vSLnB41/2-ZrWbnS0gBirDU8igxKrIRg8HSW5nT4.webp?c431",
+      "https://remix.gg/blob/Y58Z5vSLnB41/4-MqWCBUO8fGx5reV4JQiU1eNqFNC8Qq.webp?Siz1",
+      "https://remix.gg/blob/Y58Z5vSLnB41/3-pyq8sweSZ0mDTq3ML8DNjentkEBdRD.webp?Dm9p",
+    ],
     loader:
       "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/zS0QCi0PfUjO/chuckytes2t-a9Hz89icXVQVgOkchS0ssNllYtJfiu.png?RB0F",
     music: [
-      "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/retro-game-music-245230-t3lDfWOigoA1V09Piz6TAELdlQ4wzd.mpeg?Kmyu",
-      "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/8-bit-retro-game-music-233964-05Qr3Rr4tLhisYkFeqlkWvc0H5R9dq.mpeg?UxMx",
-      "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/level-iii-294428-qud1YQbagnOWtA7TSUDINswBlf7Ii2.mpeg?NnTo",
-      "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/retro-game-arcade-236133-cD0ddckxG003A916BaDw01qUsA2rdD.mpeg?ZAQ9",
+      "https://remix.gg/blob/Y58Z5vSLnB41/Music1-fqorYP4dV0ea7Fn3PaMv6MnAY3fOBu.mp3?wh7P",
+      "https://remix.gg/blob/Y58Z5vSLnB41/Music2-nfzSRk4KGrwIZJkebmXdSizbubXSJN.mp3?4yyI",
+      "https://remix.gg/blob/Y58Z5vSLnB41/Music3-QBaMUSI9yutKOPkke24B5l6QDy4QsX.mp3?CFTD",
+      "https://remix.gg/blob/Y58Z5vSLnB41/Music4-YpVGcgTNTTVqvAgBtw0XgAyWLJO6RS.mp3?WOuM",
     ],
   },
 };
