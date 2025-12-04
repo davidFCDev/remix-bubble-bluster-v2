@@ -17,8 +17,8 @@ export class StartScene extends Phaser.Scene {
     const titleText = this.add
       .text(width / 2, height * 0.3, "BUBBLE\nBLUSTER", {
         fontFamily: "Pixelify Sans",
-        fontSize: "80px",
-        color: "#ffd166",
+        fontSize: "100px", // Larger
+        color: "#B7FF00", // Neon Green
         align: "center",
         stroke: "#000000",
         strokeThickness: 8,
@@ -27,40 +27,44 @@ export class StartScene extends Phaser.Scene {
       .setShadow(0, 4, "#000000", 8, true, true);
 
     // Start Button
-    const startBtn = this.add
-      .text(width / 2, height * 0.7, "START", {
+    const btnWidth = 280;
+    const btnHeight = 70;
+    const btnY = height * 0.7;
+
+    const startBtnContainer = this.add.container(width / 2, btnY);
+
+    // Button Background (Rounded Graphics)
+    const btnBg = this.add.graphics();
+    btnBg.fillStyle(0xb7ff00, 1); // Neon Green
+    btnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      15
+    );
+
+    const btnText = this.add
+      .text(0, 0, "START", {
         fontFamily: "Pixelify Sans",
-        fontSize: "32px",
-        color: "#2b2b2b",
-        backgroundColor: "#ffc1e3",
-        padding: { x: 32, y: 16 },
+        fontSize: "36px",
+        color: "#000000",
+        fontStyle: "bold",
       })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .setStyle({
-        fixedWidth: 200,
-        align: "center",
-      });
+      .setOrigin(0.5);
 
-    // Button styling tweaks (simulating CSS border radius is hard in pure canvas text,
-    // but we can use a container or graphics if needed. For now, simple text block)
+    startBtnContainer.add([btnBg, btnText]);
 
-    startBtn.on("pointerover", () => {
-      startBtn.setStyle({ backgroundColor: "#ffb3db" });
-      startBtn.setScale(1.05);
-    });
+    // Make interactive
+    const hitArea = new Phaser.Geom.Rectangle(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight
+    );
+    startBtnContainer.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
 
-    startBtn.on("pointerout", () => {
-      startBtn.setStyle({ backgroundColor: "#ffc1e3" });
-      startBtn.setScale(1);
-    });
-
-    startBtn.on("pointerdown", () => {
-      startBtn.setStyle({ backgroundColor: "#ffa6d3" });
-      startBtn.setScale(0.95);
-    });
-
-    startBtn.on("pointerup", () => {
+    startBtnContainer.on("pointerdown", () => {
       this.scene.start("CharacterSelectScene");
     });
   }

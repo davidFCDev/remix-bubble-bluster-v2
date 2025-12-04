@@ -39,7 +39,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Card Container
     // Calculate width to leave space for arrows (approx 100px each side)
-    const cardWidth = width - 250; 
+    const cardWidth = width - 250;
     const cardHeight = height * 0.65; // Reduced height
     const cardX = width / 2;
     const cardY = height / 2 + 40; // Shift down slightly more
@@ -94,7 +94,8 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.charLoreText = this.add
-      .text(0, cardHeight * 0.02, "", { // Closer to name
+      .text(0, cardHeight * 0.02, "", {
+        // Closer to name
         fontFamily: "Pixelify Sans",
         fontSize: "24px",
         color: "#FFFFFF",
@@ -127,18 +128,29 @@ export class CharacterSelectScene extends Phaser.Scene {
     // Select Button
     const btnWidth = 280;
     const btnHeight = 70;
-    const btnY = cardHeight / 2 - 30; // Moved down slightly
+    const btnY = cardHeight / 2; // Positioned exactly on the border
 
     this.selectBtn = this.add.container(0, btnY);
 
     // Button Background (Rounded Graphics)
     const btnBg = this.add.graphics();
     btnBg.fillStyle(0xb7ff00, 1); // Neon Green
-    btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 15);
+    btnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      15
+    );
     // No stroke
 
     // Make interactive using a geom shape since Graphics doesn't have size by default
-    const hitArea = new Phaser.Geom.Rectangle(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight);
+    const hitArea = new Phaser.Geom.Rectangle(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight
+    );
     this.selectBtn.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
 
     const btnText = this.add
@@ -156,35 +168,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.selectCharacter();
     });
 
-    this.selectBtn.on("pointerover", () => {
-      btnBg.clear();
-      btnBg.fillStyle(0xffffff, 1); // White hover
-      btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 15);
-      // No stroke
-      
-      btnText.setColor("#B7FF00"); // Neon Green Text
-      this.tweens.add({
-        targets: this.selectBtn,
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 100,
-      });
-    });
-
-    this.selectBtn.on("pointerout", () => {
-      btnBg.clear();
-      btnBg.fillStyle(0xb7ff00, 1); // Neon Green normal
-      btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 15);
-      // No stroke
-
-      btnText.setColor("#000000");
-      this.tweens.add({
-        targets: this.selectBtn,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 100,
-      });
-    });
+    // Removed hover effects as requested
 
     this.charPreviewContainer.add([
       this.charPreviewSprite,
@@ -250,7 +234,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const char = GameSettings.characters[this.currentIndex];
     this.charNameText.setText(char.name);
     this.charLoreText.setText(char.lore);
-    
+
     const [skillName, skillDesc] = char.skillDesc.split(": ");
     this.charSkillNameText.setText(`~ ${skillName} ~`);
     this.charSkillDescText.setText(skillDesc);

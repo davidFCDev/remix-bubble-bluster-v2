@@ -111,7 +111,7 @@ export class GameScene extends Phaser.Scene {
     this.characterSprite = this.add
       .sprite(80, height, `${this.selectedCharacter.id}_idle`)
       .setOrigin(0.5, 1) // Anchor at bottom center
-      .setScale(4) // Reduced scale to avoid distortion
+      .setScale(6) // Increased scale
       .play(`${this.selectedCharacter.id}_idle_anim`);
 
     // Ensure crisp pixel art look
@@ -235,6 +235,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   startLevel() {
+    // Reset Ceiling
+    this.ceilingOffset = 0;
+    this.gameContainer.y = this.GRID_OFFSET_Y;
+
     // Reset Grid
     this.grid = Array(this.GRID_HEIGHT)
       .fill(null)
@@ -520,16 +524,46 @@ export class GameScene extends Phaser.Scene {
     this.arrowGraphics.closePath();
     this.arrowGraphics.fillPath();
 
-    // Update Ceiling Graphics
+    // Update Ceiling Graphics (Industrial Press Style)
     this.ceilingGraphics.clear();
-    this.ceilingGraphics.fillStyle(0x000000);
-    // Draw from top of grid area down to current offset
-    this.ceilingGraphics.fillRect(
-      0,
-      this.GRID_OFFSET_Y,
-      this.cameras.main.width,
-      this.ceilingOffset
-    );
+
+    const ceilingY = this.GRID_OFFSET_Y + this.ceilingOffset;
+    const width = this.cameras.main.width;
+
+    // Main Piston Shaft (Dark Grey)
+    this.ceilingGraphics.fillStyle(0x222222);
+    this.ceilingGraphics.fillRect(0, 0, width, ceilingY);
+
+    // Piston Head / Plate (Metallic)
+    this.ceilingGraphics.fillStyle(0x555555);
+    this.ceilingGraphics.fillRect(0, ceilingY - 20, width, 20);
+
+    // Hazard Stripes (Yellow/Black)
+    this.ceilingGraphics.fillStyle(0xffd700); // Gold/Yellow
+    for (let i = 0; i < width; i += 40) {
+      this.ceilingGraphics.beginPath();
+      this.ceilingGraphics.moveTo(i, ceilingY - 20);
+      this.ceilingGraphics.lineTo(i + 20, ceilingY - 20);
+      this.ceilingGraphics.lineTo(i, ceilingY);
+      this.ceilingGraphics.lineTo(i - 20, ceilingY);
+      this.ceilingGraphics.closePath();
+      this.ceilingGraphics.fillPath();
+    }
+
+    // Bottom Border (Red Warning Line)
+    this.ceilingGraphics.fillStyle(0xff0000);
+    this.ceilingGraphics.fillRect(0, ceilingY - 2, width, 2);
+
+    // Spikes/Teeth at the bottom
+    this.ceilingGraphics.fillStyle(0x333333);
+    for (let i = 0; i < width; i += 20) {
+      this.ceilingGraphics.beginPath();
+      this.ceilingGraphics.moveTo(i, ceilingY);
+      this.ceilingGraphics.lineTo(i + 10, ceilingY + 10);
+      this.ceilingGraphics.lineTo(i + 20, ceilingY);
+      this.ceilingGraphics.closePath();
+      this.ceilingGraphics.fillPath();
+    }
 
     // Sync grid bubbles position with ceiling offset
     this.gameContainer.y = this.GRID_OFFSET_Y + this.ceilingOffset;
@@ -542,21 +576,25 @@ export class GameScene extends Phaser.Scene {
 
       if (bubble.sprite) {
         bubble.sprite.setPosition(bubble.x, bubble.y);
-        
+
         // Rotate special bubbles
         if (bubble.isSpecial || bubble.isBomb || bubble.isWild) {
           (bubble.sprite as Phaser.GameObjects.Container).rotation += 0.1;
-          
+
           // Particle Trail
           if (Math.random() > 0.5) {
-            const color = bubble.isSpecial ? 0xFF6600 : (bubble.isBomb ? 0x333333 : 0x00FFFF);
+            const color = bubble.isSpecial
+              ? 0xff6600
+              : bubble.isBomb
+              ? 0x333333
+              : 0x00ffff;
             const p = this.add.circle(bubble.x, bubble.y, 3, color);
             this.tweens.add({
               targets: p,
               alpha: 0,
               scale: 0,
               duration: 300,
-              onComplete: () => p.destroy()
+              onComplete: () => p.destroy(),
             });
           }
         }
@@ -885,8 +923,8 @@ export class GameScene extends Phaser.Scene {
 
   showCharacterSpeech(text: string) {
     const { width, height } = this.cameras.main;
-    const x = 180; // Near character
-    const y = height - 100; // Closer to character (was 150)
+    const x = 180; // Moved right (was 100)
+    const y = height - 300; // Moved up significantly (was height - 100)
 
     const container = this.add.container(x, y);
 
@@ -1181,7 +1219,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   applySkillVisuals(bubble: Bubble, charId: string) {
-    if (!bubble.sprite || !(bubble.sprite instanceof Phaser.GameObjects.Container))
+    if (
+      !bubble.sprite ||
+      !(bubble.sprite instanceof Phaser.GameObjects.Container)
+    )
       return;
 
     const container = bubble.sprite;
@@ -1191,12 +1232,23 @@ export class GameScene extends Phaser.Scene {
 
     if (charId === "Pinky") {
       // Color Blast: Orange Sun/Spike
-      const bg = this.add.circle(0, 0, size / 2 - 2, 0xFF6600);
-      bg.setStrokeStyle(2, 0xFFFFFF);
+      // Glow
+      const glow = this.add.circle(0, 0, size / 1.5, 0xff6600, 0.4);
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.1,
+        scale: 1.2,
+        yoyo: true,
+        repeat: -1,
+        duration: 500,
+      });
+
+      const bg = this.add.circle(0, 0, size / 2 - 2, 0xff6600);
+      bg.setStrokeStyle(2, 0xffffff);
 
       // Spikes
       const spikes = this.add.graphics();
-      spikes.fillStyle(0xFFFF00, 0.8);
+      spikes.fillStyle(0xffff00, 0.8);
       for (let i = 0; i < 8; i++) {
         const angle = (i * Math.PI * 2) / 8;
         const x = Math.cos(angle) * (size / 2.5);
@@ -1204,33 +1256,57 @@ export class GameScene extends Phaser.Scene {
         spikes.fillCircle(x, y, 4);
       }
 
-      container.add([bg, spikes]);
+      container.add([glow, bg, spikes]);
     } else if (charId === "Bluey") {
       // Bomb Shot: Black Bomb
+      // Pulse Red Glow
+      const glow = this.add.circle(0, 0, size / 1.5, 0xff0000, 0.3);
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.6,
+        scale: 1.1,
+        yoyo: true,
+        repeat: -1,
+        duration: 200, // Fast pulse
+      });
+
       const bg = this.add.circle(0, 0, size / 2 - 2, 0x000000);
-      bg.setStrokeStyle(2, 0xFF0000); // Red danger stroke
+      bg.setStrokeStyle(2, 0xff0000); // Red danger stroke
 
       // Fuse / Skull symbol
-      const symbol = this.add.text(0, 0, "!", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "24px",
-        color: "#FF0000",
-        fontStyle: "bold",
-      }).setOrigin(0.5);
+      const symbol = this.add
+        .text(0, 0, "!", {
+          fontFamily: "Pixelify Sans",
+          fontSize: "24px",
+          color: "#FF0000",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5);
 
-      container.add([bg, symbol]);
+      container.add([glow, bg, symbol]);
     } else if (charId === "Whitey") {
       // Color Pick: Wild White Orb
-      const bg = this.add.circle(0, 0, size / 2 - 2, 0xFFFFFF);
+      // Rainbow Glow
+      const glow = this.add.circle(0, 0, size / 1.5, 0x00ffff, 0.4);
+      this.tweens.add({
+        targets: glow,
+        scale: 1.3,
+        alpha: 0.2,
+        yoyo: true,
+        repeat: -1,
+        duration: 800,
+      });
+
+      const bg = this.add.circle(0, 0, size / 2 - 2, 0xffffff);
 
       // Rainbow/Prismatic Stroke
       const ring = this.add.graphics();
-      ring.lineStyle(4, 0x00FFFF); // Cyan ring
+      ring.lineStyle(4, 0x00ffff); // Cyan ring
       ring.strokeCircle(0, 0, size / 2 - 4);
 
-      const inner = this.add.circle(0, 0, size / 4, 0xFF00FF, 0.5); // Magenta core
+      const inner = this.add.circle(0, 0, size / 4, 0xff00ff, 0.5); // Magenta core
 
-      container.add([bg, ring, inner]);
+      container.add([glow, bg, ring, inner]);
     }
   }
 }
