@@ -151,7 +151,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       btnWidth,
       btnHeight
     );
-    this.selectBtn.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
+    this.selectBtn.setInteractive({
+      hitArea: hitArea,
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
 
     const btnText = this.add
       .text(0, 0, "SELECT", {

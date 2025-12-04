@@ -47,6 +47,7 @@ export class GameScene extends Phaser.Scene {
   private arrowGraphics!: Phaser.GameObjects.Graphics;
   private limitLineGraphics!: Phaser.GameObjects.Graphics;
   private launcherSpeed: number = 0;
+  private lastSpeechText: string = "";
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -172,11 +173,21 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Keep pointer for shooting if desired, or remove
-    this.input.on("pointerdown", () => {
+    // Touch/Mouse Controls
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       if (!this.gameStarted) {
         this.startGame();
-      } else {
+        return;
+      }
+
+      // Zone-based control for mobile/mouse
+      // Left/Right zones (35% width) are for movement (handled in update)
+      // Center zone (30% width) is for shooting
+      const { width } = this.cameras.main;
+      const isLeft = pointer.x < width * 0.35;
+      const isRight = pointer.x > width * 0.65;
+
+      if (!isLeft && !isRight) {
         this.shootBubble();
       }
     });
@@ -239,6 +250,10 @@ export class GameScene extends Phaser.Scene {
     this.ceilingOffset = 0;
     this.gameContainer.y = this.GRID_OFFSET_Y;
 
+    // Reset Ability
+    this.abilityAvailable = true;
+    if (this.skillBtn) this.skillBtn.setAlpha(1);
+
     // Reset Grid
     this.grid = Array(this.GRID_HEIGHT)
       .fill(null)
@@ -276,11 +291,17 @@ export class GameScene extends Phaser.Scene {
       this.getRandomColor(Array.from(usedColors)),
     ];
 
-    this.showLevelOverlay(this.level, () => {
+    if (this.level > 1) {
+      this.showLevelOverlay(this.level, () => {
+        this.spawnBubble();
+        this.updateUI();
+        this.gameStarted = true;
+      });
+    } else {
       this.spawnBubble();
       this.updateUI();
       this.gameStarted = true;
-    });
+    }
   }
 
   showLevelOverlay(level: number, onComplete: () => void) {
@@ -457,18 +478,28 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number) {
     if (!this.gameStarted || this.gameOver) return;
 
-    // Input Handling (Keyboard: Arrows + A/D) with Acceleration
+    // Input Handling (Keyboard: Arrows + A/D + Touch Zones) with Acceleration
     const baseSpeed = 0.02;
     const maxSpeed = 0.05; // Reduced from 0.08
     const acceleration = 0.001; // Reduced from 0.002
 
-    if (this.cursors.left.isDown || this.keys.A.isDown) {
+    const pointer = this.input.activePointer;
+    const isTouchLeft =
+      pointer.isDown && pointer.x < this.cameras.main.width * 0.35;
+    const isTouchRight =
+      pointer.isDown && pointer.x > this.cameras.main.width * 0.65;
+
+    if (this.cursors.left.isDown || this.keys.A.isDown || isTouchLeft) {
       this.launcherSpeed = Math.min(
         this.launcherSpeed + acceleration,
         maxSpeed
       );
       this.launcherAngle += Math.max(baseSpeed, this.launcherSpeed);
-    } else if (this.cursors.right.isDown || this.keys.D.isDown) {
+    } else if (
+      this.cursors.right.isDown ||
+      this.keys.D.isDown ||
+      isTouchRight
+    ) {
       this.launcherSpeed = Math.min(
         this.launcherSpeed + acceleration,
         maxSpeed
@@ -534,25 +565,30 @@ export class GameScene extends Phaser.Scene {
     this.ceilingGraphics.fillStyle(0x222222);
     this.ceilingGraphics.fillRect(0, 0, width, ceilingY);
 
-    // Piston Head / Plate (Metallic)
-    this.ceilingGraphics.fillStyle(0x555555);
-    this.ceilingGraphics.fillRect(0, ceilingY - 20, width, 20);
+    // Hazard Stripes (Yellow/Black) - Full Height
+    // Draw stripes across the entire piston shaft
+    const stripeWidth = 40;
+    const stripeGap = 40;
 
-    // Hazard Stripes (Yellow/Black)
-    this.ceilingGraphics.fillStyle(0xffd700); // Gold/Yellow
-    for (let i = 0; i < width; i += 40) {
+    this.ceilingGraphics.fillStyle(0xffd700, 0.2); // Yellow stripes, low opacity to look like painted on dark metal
+
+    for (
+      let i = -ceilingY;
+      i < width + ceilingY;
+      i += stripeWidth + stripeGap
+    ) {
       this.ceilingGraphics.beginPath();
-      this.ceilingGraphics.moveTo(i, ceilingY - 20);
-      this.ceilingGraphics.lineTo(i + 20, ceilingY - 20);
-      this.ceilingGraphics.lineTo(i, ceilingY);
-      this.ceilingGraphics.lineTo(i - 20, ceilingY);
+      this.ceilingGraphics.moveTo(i, 0);
+      this.ceilingGraphics.lineTo(i + stripeWidth, 0);
+      this.ceilingGraphics.lineTo(i + stripeWidth - ceilingY, ceilingY); // Diagonal slope
+      this.ceilingGraphics.lineTo(i - ceilingY, ceilingY);
       this.ceilingGraphics.closePath();
       this.ceilingGraphics.fillPath();
     }
 
-    // Bottom Border (Red Warning Line)
-    this.ceilingGraphics.fillStyle(0xff0000);
-    this.ceilingGraphics.fillRect(0, ceilingY - 2, width, 2);
+    // Piston Head / Plate (Metallic)
+    this.ceilingGraphics.fillStyle(0x555555);
+    this.ceilingGraphics.fillRect(0, ceilingY - 20, width, 20);
 
     // Spikes/Teeth at the bottom
     this.ceilingGraphics.fillStyle(0x333333);
@@ -566,9 +602,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Sync grid bubbles position with ceiling offset
-    this.gameContainer.y = this.GRID_OFFSET_Y + this.ceilingOffset;
-
-    // Update Flying Bubbles
+    this.gameContainer.y = this.GRID_OFFSET_Y + this.ceilingOffset; // Update Flying Bubbles
     for (let i = this.flyingBubbles.length - 1; i >= 0; i--) {
       const bubble = this.flyingBubbles[i];
       bubble.x += bubble.velocity.x * (delta / 16);
@@ -791,7 +825,11 @@ export class GameScene extends Phaser.Scene {
             this.grid[n.r][n.c] = null;
             if (this.bubbleSprites[n.r][n.c]) {
               const sprite = this.bubbleSprites[n.r][n.c]!;
-              this.playPopAnimation(sprite.x, sprite.y, color);
+              this.playPopAnimation(
+                sprite.x + this.gameContainer.x,
+                sprite.y + this.gameContainer.y,
+                color
+              );
               sprite.destroy();
               this.bubbleSprites[n.r][n.c] = null;
             }
@@ -804,7 +842,11 @@ export class GameScene extends Phaser.Scene {
               this.grid[sn.r][sn.c] = null;
               if (this.bubbleSprites[sn.r][sn.c]) {
                 const sprite = this.bubbleSprites[sn.r][sn.c]!;
-                this.playPopAnimation(sprite.x, sprite.y, color);
+                this.playPopAnimation(
+                  sprite.x + this.gameContainer.x,
+                  sprite.y + this.gameContainer.y,
+                  color
+                );
                 sprite.destroy();
                 this.bubbleSprites[sn.r][sn.c] = null;
               }
@@ -815,7 +857,11 @@ export class GameScene extends Phaser.Scene {
         this.grid[pos.row][pos.col] = null;
         if (this.bubbleSprites[pos.row][pos.col]) {
           const sprite = this.bubbleSprites[pos.row][pos.col]!;
-          this.playPopAnimation(sprite.x, sprite.y, "#000000");
+          this.playPopAnimation(
+            sprite.x + this.gameContainer.x,
+            sprite.y + this.gameContainer.y,
+            "#000000"
+          );
           sprite.destroy();
           this.bubbleSprites[pos.row][pos.col] = null;
         }
@@ -840,7 +886,11 @@ export class GameScene extends Phaser.Scene {
                 this.grid[r][c] = null;
                 if (this.bubbleSprites[r][c]) {
                   const sprite = this.bubbleSprites[r][c]!;
-                  this.playPopAnimation(sprite.x, sprite.y, color);
+                  this.playPopAnimation(
+                    sprite.x + this.gameContainer.x,
+                    sprite.y + this.gameContainer.y,
+                    color
+                  );
                   sprite.destroy();
                   this.bubbleSprites[r][c] = null;
                 }
@@ -852,7 +902,11 @@ export class GameScene extends Phaser.Scene {
         this.grid[pos.row][pos.col] = null;
         if (this.bubbleSprites[pos.row][pos.col]) {
           const sprite = this.bubbleSprites[pos.row][pos.col]!;
-          this.playPopAnimation(sprite.x, sprite.y, "#FF6600");
+          this.playPopAnimation(
+            sprite.x + this.gameContainer.x,
+            sprite.y + this.gameContainer.y,
+            "#FF6600"
+          );
           sprite.destroy();
           this.bubbleSprites[pos.row][pos.col] = null;
         }
@@ -922,6 +976,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   showCharacterSpeech(text: string) {
+    if (text === this.lastSpeechText) return;
+    this.lastSpeechText = text;
+
     const { width, height } = this.cameras.main;
     const x = 180; // Moved right (was 100)
     const y = height - 300; // Moved up significantly (was height - 100)
@@ -960,7 +1017,10 @@ export class GameScene extends Phaser.Scene {
             alpha: 0,
             scale: 0,
             duration: 200,
-            onComplete: () => container.destroy(),
+            onComplete: () => {
+              container.destroy();
+              if (this.lastSpeechText === text) this.lastSpeechText = ""; // Reset after disappear
+            },
           });
         });
       },
@@ -1005,7 +1065,11 @@ export class GameScene extends Phaser.Scene {
         this.grid[r][c] = null;
         if (this.bubbleSprites[r][c]) {
           const sprite = this.bubbleSprites[r][c]!;
-          this.playPopAnimation(sprite.x, sprite.y, color);
+          this.playPopAnimation(
+            sprite.x + this.gameContainer.x,
+            sprite.y + this.gameContainer.y,
+            color
+          );
           sprite.destroy();
           this.bubbleSprites[r][c] = null;
         }
