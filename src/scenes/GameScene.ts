@@ -10,13 +10,17 @@ interface Bubble {
   isSpecial?: boolean;
   isWild?: boolean;
   isBomb?: boolean;
-  sprite?: Phaser.GameObjects.Arc | Phaser.GameObjects.Sprite;
+  sprite?:
+    | Phaser.GameObjects.Arc
+    | Phaser.GameObjects.Sprite
+    | Phaser.GameObjects.Container;
 }
 
 export class GameScene extends Phaser.Scene {
   private grid: (string | null)[][] = [];
   private bubbleSprites: (Phaser.GameObjects.Arc | null)[][] = [];
   private currentBubble: Bubble | null = null;
+  private flyingBubbles: Bubble[] = [];
   private nextBubbles: string[] = [];
   private launcherAngle: number = Math.PI / 2;
   private score: number = 0;
@@ -32,7 +36,7 @@ export class GameScene extends Phaser.Scene {
   // UI
   private scoreText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
-  private nextBubblePreviews: Phaser.GameObjects.Arc[] = [];
+  private nextBubblePreviews: Phaser.GameObjects.Container[] = [];
   private trajectoryGraphics!: Phaser.GameObjects.Graphics;
   private ceilingGraphics!: Phaser.GameObjects.Graphics;
   private gameContainer!: Phaser.GameObjects.Container;
@@ -42,6 +46,7 @@ export class GameScene extends Phaser.Scene {
   private characterSprite!: Phaser.GameObjects.Sprite;
   private arrowGraphics!: Phaser.GameObjects.Graphics;
   private limitLineGraphics!: Phaser.GameObjects.Graphics;
+  private launcherSpeed: number = 0;
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -84,6 +89,12 @@ export class GameScene extends Phaser.Scene {
     this.limitLineGraphics = this.add.graphics();
     this.drawLimitLine();
 
+    // Generate Particle Texture
+    const graphics = this.make.graphics({ x: 0, y: 0 });
+    graphics.fillStyle(0xffffff);
+    graphics.fillCircle(4, 4, 4);
+    graphics.generateTexture("particle", 8, 8);
+
     // Game Container (for grid and bubbles)
     this.gameContainer = this.add.container(0, this.GRID_OFFSET_Y);
 
@@ -100,12 +111,19 @@ export class GameScene extends Phaser.Scene {
     this.characterSprite = this.add
       .sprite(80, height, `${this.selectedCharacter.id}_idle`)
       .setOrigin(0.5, 1) // Anchor at bottom center
-      .setScale(5)
+      .setScale(4) // Reduced scale to avoid distortion
       .play(`${this.selectedCharacter.id}_idle_anim`);
+
+    // Ensure crisp pixel art look
+    if (this.characterSprite.texture) {
+      this.characterSprite.texture.setFilter(
+        Phaser.Textures.FilterMode.NEAREST
+      );
+    }
 
     // UI Header (Retro Style - Single Row)
     // Dark gray background
-    this.add.rectangle(width / 2, 30, width, 60, 0x111111, 1).setOrigin(0.5);
+    this.add.rectangle(width / 2, 40, width, 80, 0x111111, 1).setOrigin(0.5);
 
     const headerY = 40;
     const fontStyle = {
@@ -133,10 +151,8 @@ export class GameScene extends Phaser.Scene {
 
     // Background for next bubbles? Maybe just the bubbles
     this.nextBubblePreviews = [
-      this.add.circle(nextX, nextY, 15, 0xffffff).setStrokeStyle(2, 0xffffff),
-      this.add
-        .circle(nextX + 40, nextY, 15, 0xffffff)
-        .setStrokeStyle(2, 0xffffff),
+      this.createBubbleVisual(nextX, nextY, 35, "#FFFFFF"),
+      this.createBubbleVisual(nextX + 50, nextY, 35, "#FFFFFF"),
     ];
 
     // Skill Button (Right of Launcher)
@@ -181,24 +197,27 @@ export class GameScene extends Phaser.Scene {
   createSkillButton() {
     const { width, height } = this.cameras.main;
     // Position skill button to the right of the launcher (center)
-    // Launcher is at width/2. Let's put it at width/2 + 120
-    const btnX = width / 2 + 120;
+    // Launcher is at width/2. Let's put it at width/2 + 160 (further away)
+    const btnX = width / 2 + 160;
     const btnY = height - 80; // Slightly up from bottom
 
     const btn = this.add.container(btnX, btnY);
 
-    const bg = this.add.circle(0, 0, 35, 0xffd166).setStrokeStyle(3, 0x000000);
-    // Text "ON"
+    // Neon Style Button - Larger
+    const bg = this.add.circle(0, 0, 45, 0x000000).setStrokeStyle(4, 0xb7ff00);
+    const inner = this.add.circle(0, 0, 36, 0xb7ff00, 0.2);
+
     const text = this.add
-      .text(0, 0, "ON", {
+      .text(0, 0, "SKILL", {
         fontFamily: "Pixelify Sans",
-        fontSize: "24px",
-        color: "#000000",
+        fontSize: "22px",
+        color: "#B7FF00",
+        fontStyle: "bold",
       })
       .setOrigin(0.5);
 
-    btn.add([bg, text]);
-    btn.setSize(70, 70);
+    btn.add([bg, inner, text]);
+    btn.setSize(90, 90);
     btn.setInteractive({ useHandCursor: true });
 
     btn.on(
@@ -211,7 +230,6 @@ export class GameScene extends Phaser.Scene {
 
     this.skillBtn = btn;
   }
-
   startGame() {
     this.gameStarted = true;
   }
@@ -253,22 +271,96 @@ export class GameScene extends Phaser.Scene {
       this.getRandomColor(Array.from(usedColors)),
       this.getRandomColor(Array.from(usedColors)),
     ];
-    this.spawnBubble();
-    this.updateUI();
-    this.gameStarted = true;
+
+    this.showLevelOverlay(this.level, () => {
+      this.spawnBubble();
+      this.updateUI();
+      this.gameStarted = true;
+    });
+  }
+
+  showLevelOverlay(level: number, onComplete: () => void) {
+    const { width, height } = this.cameras.main;
+    const overlay = this.add.container(0, 0);
+
+    const bg = this.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x000000,
+      0.85
+    );
+    const text = this.add
+      .text(width / 2, height / 2, `LEVEL ${level}`, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "80px",
+        color: "#B7FF00",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setScale(0);
+
+    overlay.add([bg, text]);
+    overlay.setDepth(100); // Ensure it's on top
+
+    // Animation
+    this.tweens.add({
+      targets: text,
+      scale: 1,
+      duration: 500,
+      ease: "Back.out",
+      onComplete: () => {
+        this.time.delayedCall(1500, () => {
+          this.tweens.add({
+            targets: overlay,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+              overlay.destroy();
+              onComplete();
+            },
+          });
+        });
+      },
+    });
   }
 
   createBubbleSprite(row: number, col: number, color: string) {
     const { x, y } = this.getBubblePos(row, col);
+    const container = this.createBubbleVisual(x, y, this.BUBBLE_SIZE, color);
+    this.gameContainer.add(container);
+
+    // Store container instead of just circle, but cast to any to satisfy type for now or update type
+    // Updating type is better but for quick fix we store container.
+    // The type definition says Arc | Sprite. We should update it to Container | Arc | Sprite or just any.
+    // Let's update the type definition at the top of the file later or cast here.
+    this.bubbleSprites[row][col] = container as any;
+  }
+
+  createBubbleVisual(x: number, y: number, size: number, color: string) {
+    const container = this.add.container(x, y);
+
+    // Base bubble
     const circle = this.add.circle(
-      x,
-      y,
-      this.BUBBLE_SIZE / 2 - 2,
+      0,
+      0,
+      size / 2 - 2,
       Phaser.Display.Color.HexStringToColor(color).color
     );
     circle.setStrokeStyle(2, 0xffffff);
-    this.gameContainer.add(circle);
-    this.bubbleSprites[row][col] = circle;
+
+    // Shine (Retro highlight)
+    const shine = this.add.circle(
+      -size / 6,
+      -size / 6,
+      size / 8,
+      0xffffff,
+      0.6
+    );
+
+    container.add([circle, shine]);
+    return container;
   }
 
   getBubblePos(row: number, col: number) {
@@ -281,8 +373,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   getRandomColor(availableColors: string[]) {
+    // Get colors currently on the grid
+    const gridColors = new Set<string>();
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        if (this.grid[r][c]) {
+          gridColors.add(this.grid[r][c]!);
+        }
+      }
+    }
+
+    // Also include colors currently in the queue (nextBubbles) to avoid starvation if grid is empty but queue has colors
+    this.nextBubbles.forEach((c) => gridColors.add(c));
+
+    // If we have colors on grid, pick from them. Otherwise fallback to all colors (e.g. start of game or empty grid)
+    const pool = gridColors.size > 0 ? Array.from(gridColors) : availableColors;
+
     return (
-      availableColors[Math.floor(Math.random() * availableColors.length)] ||
+      pool[Math.floor(Math.random() * pool.length)] ||
       GameSettings.colors.all[0]
     );
   }
@@ -293,6 +402,14 @@ export class GameScene extends Phaser.Scene {
 
     const { width, height } = this.cameras.main;
 
+    // Use the same visual style as grid bubbles
+    const visual = this.createBubbleVisual(
+      width / 2,
+      height - 20,
+      this.BUBBLE_SIZE,
+      color
+    );
+
     this.currentBubble = {
       x: width / 2,
       y: height - 20,
@@ -301,14 +418,7 @@ export class GameScene extends Phaser.Scene {
       moving: false,
       isSpecial: false,
       isWild: false,
-      sprite: this.add
-        .circle(
-          width / 2,
-          height - 20,
-          this.BUBBLE_SIZE / 2 - 2,
-          Phaser.Display.Color.HexStringToColor(color).color
-        )
-        .setStrokeStyle(2, 0xffffff),
+      sprite: visual,
     };
 
     // Whitey Skill Check
@@ -330,19 +440,39 @@ export class GameScene extends Phaser.Scene {
       this.currentBubble.velocity.x = Math.cos(this.launcherAngle) * speed;
       this.currentBubble.velocity.y = -Math.sin(this.launcherAngle) * speed;
       this.currentBubble.moving = true;
+
+      this.flyingBubbles.push(this.currentBubble);
+      this.currentBubble = null;
+
       this.shotCount++;
+      this.spawnBubble();
     }
   }
 
   update(time: number, delta: number) {
     if (!this.gameStarted || this.gameOver) return;
 
-    // Input Handling (Keyboard: Arrows + A/D)
+    // Input Handling (Keyboard: Arrows + A/D) with Acceleration
+    const baseSpeed = 0.02;
+    const maxSpeed = 0.05; // Reduced from 0.08
+    const acceleration = 0.001; // Reduced from 0.002
+
     if (this.cursors.left.isDown || this.keys.A.isDown) {
-      this.launcherAngle += 0.05;
+      this.launcherSpeed = Math.min(
+        this.launcherSpeed + acceleration,
+        maxSpeed
+      );
+      this.launcherAngle += Math.max(baseSpeed, this.launcherSpeed);
     } else if (this.cursors.right.isDown || this.keys.D.isDown) {
-      this.launcherAngle -= 0.05;
+      this.launcherSpeed = Math.min(
+        this.launcherSpeed + acceleration,
+        maxSpeed
+      );
+      this.launcherAngle -= Math.max(baseSpeed, this.launcherSpeed);
+    } else {
+      this.launcherSpeed = 0;
     }
+
     // Clamp Angle (approx 10 to 170 degrees)
     this.launcherAngle = Phaser.Math.Clamp(
       this.launcherAngle,
@@ -358,9 +488,9 @@ export class GameScene extends Phaser.Scene {
     const endX = startX + Math.cos(this.launcherAngle) * length;
     const endY = startY - Math.sin(this.launcherAngle) * length;
 
-    // Draw Outer Ring (Neon Green)
+    // Draw Outer Ring (Neon Green) - Larger
     this.arrowGraphics.lineStyle(6, 0xb7ff00); // Neon Green, thicker
-    this.arrowGraphics.strokeCircle(startX, startY, this.BUBBLE_SIZE / 2 + 15);
+    this.arrowGraphics.strokeCircle(startX, startY, this.BUBBLE_SIZE / 2 + 25);
 
     // Draw Arrow Line (Thick Neon Green)
     this.arrowGraphics.lineStyle(8, 0xb7ff00);
@@ -403,57 +533,49 @@ export class GameScene extends Phaser.Scene {
     // Sync grid bubbles position with ceiling offset
     this.gameContainer.y = this.GRID_OFFSET_Y + this.ceilingOffset;
 
-    // Update Current Bubble
-    if (this.currentBubble && this.currentBubble.moving) {
-      this.currentBubble.x += this.currentBubble.velocity.x * (delta / 16);
-      this.currentBubble.y += this.currentBubble.velocity.y * (delta / 16);
+    // Update Flying Bubbles
+    for (let i = this.flyingBubbles.length - 1; i >= 0; i--) {
+      const bubble = this.flyingBubbles[i];
+      bubble.x += bubble.velocity.x * (delta / 16);
+      bubble.y += bubble.velocity.y * (delta / 16);
 
-      if (this.currentBubble.sprite) {
-        this.currentBubble.sprite.setPosition(
-          this.currentBubble.x,
-          this.currentBubble.y
-        );
+      if (bubble.sprite) {
+        bubble.sprite.setPosition(bubble.x, bubble.y);
       }
 
       // Wall Collision
       if (
-        this.currentBubble.x < this.BUBBLE_SIZE / 2 ||
-        this.currentBubble.x > this.cameras.main.width - this.BUBBLE_SIZE / 2
+        bubble.x < this.BUBBLE_SIZE / 2 ||
+        bubble.x > this.cameras.main.width - this.BUBBLE_SIZE / 2
       ) {
-        this.currentBubble.velocity.x *= -1;
-        this.currentBubble.x = Phaser.Math.Clamp(
-          this.currentBubble.x,
+        bubble.velocity.x *= -1;
+        bubble.x = Phaser.Math.Clamp(
+          bubble.x,
           this.BUBBLE_SIZE / 2,
           this.cameras.main.width - this.BUBBLE_SIZE / 2
         );
       }
 
-      // Ceiling Collision (Adjusted for Grid Offset)
-      // The grid starts at GRID_OFFSET_Y + ceilingOffset.
-      // So relative to the screen, the top of the grid is at GRID_OFFSET_Y + ceilingOffset.
-      // But the bubble is in world coordinates.
-      // The condition `y < BUBBLE_SIZE/2 + ceilingOffset` assumed grid started at 0.
-      // Now grid starts at GRID_OFFSET_Y.
+      // Ceiling Collision
       if (
-        this.currentBubble.y <
+        bubble.y <
         this.GRID_OFFSET_Y + this.ceilingOffset + this.BUBBLE_SIZE / 2
       ) {
-        this.snapBubbleToGrid();
-        return;
+        this.snapBubbleToGrid(bubble);
+        this.flyingBubbles.splice(i, 1);
+        continue;
       }
 
       // Bubble Collision
-      const pos = this.getGridPos(this.currentBubble.x, this.currentBubble.y);
-      // Check neighbors
-      const neighbors = this.getNeighbors(pos.row, pos.col);
-      // Also check the cell itself if occupied (shouldn't happen if logic is right, but for safety)
+      const pos = this.getGridPos(bubble.x, bubble.y);
       if (this.grid[pos.row] && this.grid[pos.row][pos.col]) {
-        this.snapBubbleToGrid();
-        return;
+        this.snapBubbleToGrid(bubble);
+        this.flyingBubbles.splice(i, 1);
+        continue;
       }
 
       // Check collision with existing bubbles
-      // We iterate nearby cells
+      let collided = false;
       for (
         let r = Math.max(0, pos.row - 1);
         r <= Math.min(this.GRID_HEIGHT - 1, pos.row + 1);
@@ -463,22 +585,22 @@ export class GameScene extends Phaser.Scene {
         for (let c = 0; c < maxCols; c++) {
           if (this.grid[r][c]) {
             const { x: bx, y: by } = this.getBubblePos(r, c);
-            // Adjust by ceiling offset and grid offset for collision check since bubble is in world space
-            // getBubblePos returns local coordinates relative to gameContainer
-            // gameContainer is at GRID_OFFSET_Y + ceilingOffset
             const worldBy = by + this.GRID_OFFSET_Y + this.ceilingOffset;
             const dist = Phaser.Math.Distance.Between(
-              this.currentBubble.x,
-              this.currentBubble.y,
+              bubble.x,
+              bubble.y,
               bx,
               worldBy
             );
             if (dist < this.BUBBLE_SIZE * 0.9) {
-              this.snapBubbleToGrid();
-              return;
+              this.snapBubbleToGrid(bubble);
+              this.flyingBubbles.splice(i, 1);
+              collided = true;
+              break;
             }
           }
         }
+        if (collided) break;
       }
     }
 
@@ -490,18 +612,86 @@ export class GameScene extends Phaser.Scene {
     this.trajectoryGraphics.clear();
     if (!this.currentBubble || this.currentBubble.moving) return;
 
-    // Solid Line Style (No collision check, just straight line)
+    // Configuración de la línea de puntos
+    const dotSpacing = 15; // Espacio entre puntos
+    const maxSteps = 200; // Máximo número de pasos
+    const stepSize = 10; // Tamaño del paso de simulación
+    const radius = this.BUBBLE_SIZE / 2;
+    const gameWidth = this.cameras.main.width;
+    const gameHeight = this.cameras.main.height;
+    const ceilingY = this.GRID_OFFSET_Y + this.ceilingOffset;
+
+    // Color Cyan para la trayectoria (mejor contraste)
+    this.trajectoryGraphics.fillStyle(0x00ffff, 0.8);
 
     let simX = this.currentBubble.x;
     let simY = this.currentBubble.y;
-    let simAngle = this.launcherAngle;
-    const length = 1000; // Long enough to go off screen
+    let angle = this.launcherAngle;
+    let vx = Math.cos(angle);
+    let vy = -Math.sin(angle);
 
-    const endX = simX + Math.cos(simAngle) * length;
-    const endY = simY - Math.sin(simAngle) * length;
+    let distAccumulator = 0;
 
-    this.trajectoryGraphics.lineStyle(2, 0xffffff, 0.5);
-    this.trajectoryGraphics.lineBetween(simX, simY, endX, endY);
+    for (let i = 0; i < maxSteps * (gameHeight / stepSize); i++) {
+      // Avanzar simulación
+      simX += vx * stepSize;
+      simY += vy * stepSize;
+
+      // Rebote en paredes
+      if (simX <= radius || simX >= gameWidth - radius) {
+        vx *= -1;
+        simX = Phaser.Math.Clamp(simX, radius, gameWidth - radius);
+      }
+
+      // Colisión con techo
+      if (simY <= ceilingY + radius) {
+        break;
+      }
+
+      // Colisión con burbujas existentes
+      let collisionFound = false;
+
+      // Optimización: Solo revisar filas cercanas a la posición simulada
+      // Convertir simY a coordenadas locales de la grilla para estimar fila
+      const localSimY = simY - ceilingY;
+      const approxRow = Math.floor(
+        localSimY / ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2)
+      );
+
+      const startRow = Math.max(0, approxRow - 2);
+      const endRow = Math.min(this.GRID_HEIGHT - 1, approxRow + 2);
+
+      for (let r = startRow; r <= endRow; r++) {
+        const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+        for (let c = 0; c < maxCols; c++) {
+          if (this.grid[r][c]) {
+            const { x: bx, y: by } = this.getBubblePos(r, c);
+            const worldBy = by + ceilingY; // Ajustar a coordenadas de mundo
+
+            const dx = simX - bx;
+            const dy = simY - worldBy;
+            const distSq = dx * dx + dy * dy;
+
+            // Si la distancia es menor a 2 radios (colisión), paramos
+            // Usamos un factor un poco menor (1.8) para que la guía no se detenga "antes" de tocar visualmente
+            if (distSq < (radius * 2 * 0.9) ** 2) {
+              collisionFound = true;
+              break;
+            }
+          }
+        }
+        if (collisionFound) break;
+      }
+
+      if (collisionFound) break;
+
+      // Dibujar punto si hemos acumulado suficiente distancia
+      distAccumulator += stepSize;
+      if (distAccumulator >= dotSpacing) {
+        this.trajectoryGraphics.fillCircle(simX, simY, 3); // Puntos un poco más grandes
+        distAccumulator = 0;
+      }
+    }
   }
   getGridPos(x: number, y: number) {
     const row = Math.floor(
@@ -520,53 +710,122 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  snapBubbleToGrid() {
-    if (!this.currentBubble) return;
+  snapBubbleToGrid(bubble: Bubble) {
+    if (!bubble) return;
 
-    let pos = this.getGridPos(this.currentBubble.x, this.currentBubble.y);
+    let pos = this.getGridPos(bubble.x, bubble.y);
 
     // Logic to find nearest empty spot if occupied or out of bounds
     if (!this.isValidPos(pos.row, pos.col) || this.grid[pos.row][pos.col]) {
-      // Simple fallback: find nearest empty neighbor of collision point
-      // For now, let's assume the collision logic stopped us "near" a spot.
-      // We can refine this with the "findNearestEmptySpot" from original code if needed.
-      // Implementing a simplified version:
-      pos =
-        this.findNearestEmptySpot(this.currentBubble.x, this.currentBubble.y) ||
-        pos;
+      pos = this.findNearestEmptySpot(bubble.x, bubble.y) || pos;
     }
 
     if (this.isValidPos(pos.row, pos.col)) {
-      this.grid[pos.row][pos.col] = this.currentBubble.color;
-      this.createBubbleSprite(pos.row, pos.col, this.currentBubble.color);
+      this.grid[pos.row][pos.col] = bubble.color;
+      this.createBubbleSprite(pos.row, pos.col, bubble.color);
 
-      // Handle Skills (Bomb, etc) - simplified for now
-      if (this.currentBubble.isBomb) {
-        // Bomb logic
-      } else if (this.currentBubble.isSpecial) {
-        // Color blast logic
+      // Handle Skills (Bomb, etc)
+      if (bubble.isBomb) {
+        // Bomb logic: Destroy neighbors in radius 2
+        const neighbors = this.getNeighbors(pos.row, pos.col);
+        neighbors.forEach((n) => {
+          if (this.grid[n.r][n.c]) {
+            const color = this.grid[n.r][n.c]!;
+            this.grid[n.r][n.c] = null;
+            if (this.bubbleSprites[n.r][n.c]) {
+              const sprite = this.bubbleSprites[n.r][n.c]!;
+              this.playPopAnimation(sprite.x, sprite.y, color);
+              sprite.destroy();
+              this.bubbleSprites[n.r][n.c] = null;
+            }
+          }
+          // Chain reaction? For now just direct neighbors
+          const secondNeighbors = this.getNeighbors(n.r, n.c);
+          secondNeighbors.forEach((sn) => {
+            if (this.grid[sn.r][sn.c]) {
+              const color = this.grid[sn.r][sn.c]!;
+              this.grid[sn.r][sn.c] = null;
+              if (this.bubbleSprites[sn.r][sn.c]) {
+                const sprite = this.bubbleSprites[sn.r][sn.c]!;
+                this.playPopAnimation(sprite.x, sprite.y, color);
+                sprite.destroy();
+                this.bubbleSprites[sn.r][sn.c] = null;
+              }
+            }
+          });
+        });
+        // Destroy self too
+        this.grid[pos.row][pos.col] = null;
+        if (this.bubbleSprites[pos.row][pos.col]) {
+          const sprite = this.bubbleSprites[pos.row][pos.col]!;
+          this.playPopAnimation(sprite.x, sprite.y, "#000000");
+          sprite.destroy();
+          this.bubbleSprites[pos.row][pos.col] = null;
+        }
+        this.removeFloatingBubbles();
+        this.updateUI();
+      } else if (bubble.isSpecial) {
+        // Color Blast (Pinky): Destroy all bubbles of the touched color
+        // Find neighbors first to see what color we touched
+        const neighbors = this.getNeighbors(pos.row, pos.col);
+        const touchedColors = new Set<string>();
+        neighbors.forEach((n) => {
+          if (this.grid[n.r][n.c]) touchedColors.add(this.grid[n.r][n.c]!);
+        });
+
+        if (touchedColors.size > 0) {
+          // Destroy all bubbles of these colors
+          for (let r = 0; r < this.GRID_HEIGHT; r++) {
+            const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+            for (let c = 0; c < maxCols; c++) {
+              if (this.grid[r][c] && touchedColors.has(this.grid[r][c]!)) {
+                const color = this.grid[r][c]!;
+                this.grid[r][c] = null;
+                if (this.bubbleSprites[r][c]) {
+                  const sprite = this.bubbleSprites[r][c]!;
+                  this.playPopAnimation(sprite.x, sprite.y, color);
+                  sprite.destroy();
+                  this.bubbleSprites[r][c] = null;
+                }
+              }
+            }
+          }
+        }
+        // Destroy self
+        this.grid[pos.row][pos.col] = null;
+        if (this.bubbleSprites[pos.row][pos.col]) {
+          const sprite = this.bubbleSprites[pos.row][pos.col]!;
+          this.playPopAnimation(sprite.x, sprite.y, "#FF6600");
+          sprite.destroy();
+          this.bubbleSprites[pos.row][pos.col] = null;
+        }
+        this.removeFloatingBubbles();
+        this.updateUI();
       } else {
-        this.checkAndRemoveMatches(pos.row, pos.col);
+        this.checkAndRemoveMatches(pos.row, pos.col, bubble);
       }
     }
 
-    if (this.currentBubble.sprite) {
-      this.currentBubble.sprite.destroy();
+    if (bubble.sprite) {
+      bubble.sprite.destroy();
     }
-    this.currentBubble = null;
 
     // Check Ceiling Drop
-    if (this.shotCount >= GameSettings.gameplay.baseShotsPerCeilingDrop) {
+    // Progressive difficulty: Ceiling drops faster as level increases
+    // Base is e.g. 6 shots. Level 1: 6. Level 3: 5. Level 5: 4. Min 2.
+    const shotsPerDrop = Math.max(
+      2,
+      GameSettings.gameplay.baseShotsPerCeilingDrop -
+        Math.floor((this.level - 1) / 2)
+    );
+
+    if (this.shotCount >= shotsPerDrop) {
       this.lowerCeiling();
       this.shotCount = 0;
     }
 
     // Check Game Over
     this.checkGameOver();
-
-    if (!this.gameOver) {
-      this.spawnBubble();
-    }
   }
 
   findNearestEmptySpot(x: number, y: number) {
@@ -605,22 +864,105 @@ export class GameScene extends Phaser.Scene {
     return col >= 0 && col < maxCols;
   }
 
-  checkAndRemoveMatches(row: number, col: number) {
+  showCharacterSpeech(text: string) {
+    const { width, height } = this.cameras.main;
+    const x = 180; // Near character
+    const y = height - 100; // Closer to character (was 150)
+
+    const container = this.add.container(x, y);
+
+    // Pixelated Speech Bubble Style
+    const bubble = this.add.graphics();
+    bubble.fillStyle(0xffffff, 1);
+    bubble.fillRoundedRect(0, 0, 140, 50, 10);
+    bubble.fillTriangle(20, 50, 40, 50, 20, 70); // Tail
+
+    const txt = this.add
+      .text(70, 25, text, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "20px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    container.add([bubble, txt]);
+    container.setAlpha(0);
+    container.setScale(0);
+
+    this.tweens.add({
+      targets: container,
+      alpha: 1,
+      scale: 1,
+      duration: 200,
+      ease: "Back.out",
+      onComplete: () => {
+        this.time.delayedCall(1500, () => {
+          this.tweens.add({
+            targets: container,
+            alpha: 0,
+            scale: 0,
+            duration: 200,
+            onComplete: () => container.destroy(),
+          });
+        });
+      },
+    });
+  }
+
+  checkAndRemoveMatches(row: number, col: number, bubble?: Bubble) {
     const color = this.grid[row][col];
     if (!color) return;
+
+    // If Wild (Whitey), it matches with ANY neighbor color
+    // Actually, usually Wild changes to the color it hits, or acts as a bridge.
+    // Let's say it acts as a bridge. But for simplicity, if it's wild, we check matches for ALL neighbor colors.
+    // Or simpler: If I am wild, I become the color of the first neighbor I find and trigger match.
+    if (bubble && bubble.isWild) {
+      const neighbors = this.getNeighbors(row, col);
+      const neighborColors = neighbors
+        .map((n) => this.grid[n.r][n.c])
+        .filter((c) => c !== null);
+      if (neighborColors.length > 0) {
+        // Pick the first color found
+        const targetColor = neighborColors[0]!;
+        this.grid[row][col] = targetColor; // Transform to that color
+        // Update sprite color
+        if (this.bubbleSprites[row][col]) {
+          // We need to access the circle inside the container
+          const container = this.bubbleSprites[row][col] as any;
+          const circle = container.list[0] as Phaser.GameObjects.Arc;
+          circle.setFillStyle(
+            Phaser.Display.Color.HexStringToColor(targetColor).color
+          );
+        }
+        // Now check matches for that color
+        this.checkAndRemoveMatches(row, col);
+        return;
+      }
+    }
 
     const matches = this.getMatches(row, col, color);
     if (matches.length >= 3) {
       matches.forEach(({ r, c }) => {
         this.grid[r][c] = null;
         if (this.bubbleSprites[r][c]) {
-          this.bubbleSprites[r][c]!.destroy();
+          const sprite = this.bubbleSprites[r][c]!;
+          this.playPopAnimation(sprite.x, sprite.y, color);
+          sprite.destroy();
           this.bubbleSprites[r][c] = null;
         }
-        // Particles here
       });
       this.removeFloatingBubbles();
       this.score += matches.length * 10;
+
+      // Character Speech Logic
+      if (matches.length >= 8) {
+        this.showCharacterSpeech("MEGA COMBO!");
+      } else if (matches.length >= 5) {
+        this.showCharacterSpeech("NICE!");
+      }
+
       this.updateUI();
     }
   }
@@ -662,6 +1004,17 @@ export class GameScene extends Phaser.Scene {
     return offsets.filter((n) => this.isValidPos(n.r, n.c));
   }
 
+  checkLevelComplete() {
+    // Check if grid is empty
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        if (this.grid[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
   removeFloatingBubbles() {
     const connected = new Set<string>();
     const queue = [];
@@ -692,15 +1045,29 @@ export class GameScene extends Phaser.Scene {
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c] && !connected.has(`${r},${c}`)) {
+          const color = this.grid[r][c]!;
           this.grid[r][c] = null;
           if (this.bubbleSprites[r][c]) {
-            this.bubbleSprites[r][c]!.destroy();
+            const sprite = this.bubbleSprites[r][c]!;
+            this.playPopAnimation(
+              sprite.x + this.gameContainer.x,
+              sprite.y + this.gameContainer.y,
+              color
+            );
+            sprite.destroy();
             this.bubbleSprites[r][c] = null;
           }
-          // Particles
           this.score += 20;
         }
       }
+    }
+
+    if (this.checkLevelComplete()) {
+      this.gameStarted = false;
+      this.level++;
+      this.time.delayedCall(1000, () => {
+        this.startLevel();
+      });
     }
   }
 
@@ -771,96 +1138,34 @@ export class GameScene extends Phaser.Scene {
 
     this.nextBubblePreviews.forEach((preview, idx) => {
       if (this.nextBubbles[idx]) {
-        preview.setFillStyle(
+        // Update color of the circle inside the container
+        const circle = (preview as any).list[0] as Phaser.GameObjects.Arc;
+        circle.setFillStyle(
           Phaser.Display.Color.HexStringToColor(this.nextBubbles[idx]).color
         );
       }
     });
   }
 
-  drawTrajectory() {
-    this.trajectoryGraphics.clear();
-    if (!this.currentBubble || this.currentBubble.moving) return;
+  playPopAnimation(x: number, y: number, color: string) {
+    // Particles Explosion
+    const particles = this.add.particles(x, y, "particle", {
+      speed: { min: 100, max: 300 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1, end: 0 },
+      lifespan: 600,
+      blendMode: "ADD",
+      tint: Phaser.Display.Color.HexStringToColor(color).color,
+      quantity: 20,
+      emitting: false,
+      gravityY: 300,
+    });
 
-    // Configuración de la línea de puntos
-    const dotSpacing = 15; // Espacio entre puntos
-    const maxSteps = 200; // Máximo número de pasos
-    const stepSize = 10; // Tamaño del paso de simulación
-    const radius = this.BUBBLE_SIZE / 2;
-    const gameWidth = this.cameras.main.width;
-    const gameHeight = this.cameras.main.height;
-    const ceilingY = this.GRID_OFFSET_Y + this.ceilingOffset;
+    particles.explode(20);
 
-    // Color verde neón para la trayectoria
-    this.trajectoryGraphics.fillStyle(0xb7ff00, 0.8);
-
-    let simX = this.currentBubble.x;
-    let simY = this.currentBubble.y;
-    let angle = this.launcherAngle;
-    let vx = Math.cos(angle);
-    let vy = -Math.sin(angle);
-
-    let distAccumulator = 0;
-
-    for (let i = 0; i < maxSteps * (gameHeight / stepSize); i++) {
-      // Avanzar simulación
-      simX += vx * stepSize;
-      simY += vy * stepSize;
-
-      // Rebote en paredes
-      if (simX <= radius || simX >= gameWidth - radius) {
-        vx *= -1;
-        simX = Phaser.Math.Clamp(simX, radius, gameWidth - radius);
-      }
-
-      // Colisión con techo
-      if (simY <= ceilingY + radius) {
-        break;
-      }
-
-      // Colisión con burbujas existentes
-      let collisionFound = false;
-
-      // Optimización: Solo revisar filas cercanas a la posición simulada
-      // Convertir simY a coordenadas locales de la grilla para estimar fila
-      const localSimY = simY - ceilingY;
-      const approxRow = Math.floor(
-        localSimY / ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2)
-      );
-
-      const startRow = Math.max(0, approxRow - 2);
-      const endRow = Math.min(this.GRID_HEIGHT - 1, approxRow + 2);
-
-      for (let r = startRow; r <= endRow; r++) {
-        const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
-        for (let c = 0; c < maxCols; c++) {
-          if (this.grid[r][c]) {
-            const { x: bx, y: by } = this.getBubblePos(r, c);
-            const worldBy = by + ceilingY; // Ajustar a coordenadas de mundo
-
-            const dx = simX - bx;
-            const dy = simY - worldBy;
-            const distSq = dx * dx + dy * dy;
-
-            // Si la distancia es menor a 2 radios (colisión), paramos
-            // Usamos un factor un poco menor (1.8) para que la guía no se detenga "antes" de tocar visualmente
-            if (distSq < (radius * 2 * 0.9) ** 2) {
-              collisionFound = true;
-              break;
-            }
-          }
-        }
-        if (collisionFound) break;
-      }
-
-      if (collisionFound) break;
-
-      // Dibujar punto si hemos acumulado suficiente distancia
-      distAccumulator += stepSize;
-      if (distAccumulator >= dotSpacing) {
-        this.trajectoryGraphics.fillCircle(simX, simY, 3); // Puntos un poco más grandes
-        distAccumulator = 0;
-      }
-    }
+    // Auto destroy particles after lifespan
+    this.time.delayedCall(700, () => {
+      particles.destroy();
+    });
   }
 }
