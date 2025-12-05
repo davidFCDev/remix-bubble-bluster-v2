@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import GameSettings from "../config/GameSettings";
+import { BubbleVisuals } from "../objects/BubbleVisuals";
 
 interface Bubble {
   x: number;
@@ -31,6 +32,7 @@ export class GameScene extends Phaser.Scene {
   private level: number = 1;
   private ceilingOffset: number = 0;
   private shotCount: number = 0;
+  private slimeTurnCount: number = 0;
   private gameOver: boolean = false;
   private gameStarted: boolean = false;
   private selectedCharacter: any = null;
@@ -80,6 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.gameStarted = false;
     this.ceilingOffset = 0;
     this.shotCount = 0;
+    this.slimeTurnCount = 0;
     this.abilityAvailable = true;
     this.whiteyWildShotsLeft = 0;
     this.launcherAngle = Math.PI / 2;
@@ -104,41 +107,8 @@ export class GameScene extends Phaser.Scene {
     this.limitLineGraphics = this.add.graphics();
     this.drawLimitLine();
 
-    // Generate Particle Texture
-    const graphics = this.make.graphics({ x: 0, y: 0 });
-    graphics.fillStyle(0xffffff);
-    graphics.fillCircle(4, 4, 4);
-    graphics.generateTexture("particle", 8, 8);
-
-    // Generate Chameleon Scales Texture
-    const scalesGraphics = this.make.graphics({ x: 0, y: 0 });
-    scalesGraphics.fillStyle(0x000000, 0.2);
-    for (let i = -5; i <= 5; i++) {
-      for (let j = -5; j <= 5; j++) {
-        if ((i + j) % 2 === 0 && Math.abs(i) + Math.abs(j) < 8) {
-          scalesGraphics.fillCircle(32 + i * 6, 32 + j * 6, 2);
-        }
-      }
-    }
-    scalesGraphics.generateTexture("chameleon_scales", 64, 64);
-
-    // Generate Chameleon Ring Texture
-    const ringGraphics = this.make.graphics({ x: 0, y: 0 });
-    ringGraphics.lineStyle(3, 0xffffff, 0.8);
-    const ringRadius = 32 - 3; // Close to edge of 64x64
-    const dashLength = Math.PI / 4;
-    for (let i = 0; i < 4; i++) {
-      ringGraphics.beginPath();
-      ringGraphics.arc(
-        32,
-        32,
-        ringRadius,
-        i * (Math.PI / 2),
-        i * (Math.PI / 2) + dashLength
-      );
-      ringGraphics.strokePath();
-    }
-    ringGraphics.generateTexture("chameleon_ring", 64, 64);
+    // Generate Textures (Particles, Special Bubbles)
+    BubbleVisuals.generateTextures(this);
 
     // Game Container (for grid and bubbles)
     this.gameContainer = this.add.container(0, this.GRID_OFFSET_Y);
@@ -422,32 +392,35 @@ export class GameScene extends Phaser.Scene {
       const numBubbles = isOddRow ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       for (let col = 0; col < numBubbles; col++) {
         let color;
-        // 5% chance for Stone, but NEVER on row 0 (ceiling)
-        // if (row > 0 && Math.random() < 0.05) {
-        //   color = "STONE";
-        // } else
-        // if (row > 0 && Math.random() < 0.1) {
-        //   // 10% chance for Anchor (Increased for testing)
-        //   color = "ANCHOR";
-        // } else
-        if (row > 0 && Math.random() < 0.1) {
-          // 10% chance for Chameleon
-          const baseColor =
-            GameSettings.colors.all[
-              Math.floor(Math.random() * GameSettings.colors.all.length)
-            ];
-          color = `CHAMELEON:${baseColor}`;
-        } else {
-          color =
-            GameSettings.colors.all[
-              Math.floor(Math.random() * GameSettings.colors.all.length)
-            ];
-          usedColors.add(color);
-        }
+        // Standard colors only for now (Slime is added separately below)
+        color =
+          GameSettings.colors.all[
+            Math.floor(Math.random() * GameSettings.colors.all.length)
+          ];
+        usedColors.add(color);
 
         this.grid[row][col] = color;
         this.createBubbleSprite(row, col, color);
       }
+    }
+
+    // Place ONE Prism (Level 1 Testing)
+    // Find a valid spot (not row 0, not empty)
+    let prismPlaced = false;
+    let attempts = 0;
+    while (!prismPlaced && attempts < 100) {
+      const r = Phaser.Math.Between(1, initialRows - 1); // Row > 0
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      const c = Phaser.Math.Between(0, maxCols - 1);
+
+      if (this.grid[r][c]) {
+        // Replace with Prism
+        if (this.bubbleSprites[r][c]) this.bubbleSprites[r][c]!.destroy();
+        this.grid[r][c] = "PRISM";
+        this.createBubbleSprite(r, c, "PRISM");
+        prismPlaced = true;
+      }
+      attempts++;
     }
 
     // Setup Next Bubbles
@@ -529,168 +502,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   createBubbleVisual(x: number, y: number, size: number, color: string) {
-    const container = this.add.container(x, y);
-
-    if (color === "STONE") {
-      // Stone Visual: Shiny Obsidian Black
-      const circle = this.add.circle(0, 0, size / 2 - 2, 0x000000);
-      circle.setStrokeStyle(2, 0x888888); // Metallic grey border
-
-      // Cracks / Texture (Subtle Grey)
-      const graphics = this.add.graphics();
-      graphics.lineStyle(2, 0x444444);
-
-      // Crack 1
-      graphics.beginPath();
-      graphics.moveTo(-size / 4, -size / 4);
-      graphics.lineTo(0, 0);
-      graphics.lineTo(size / 4, -size / 8);
-      graphics.strokePath();
-
-      // Crack 2
-      graphics.beginPath();
-      graphics.moveTo(0, 0);
-      graphics.lineTo(-size / 8, size / 3);
-      graphics.strokePath();
-
-      // Standard Shine (Top Left) - Same as other bubbles
-      const shine = this.add.circle(
-        -size / 6,
-        -size / 6,
-        size / 8,
-        0xffffff,
-        0.6
-      );
-
-      container.add([circle, graphics, shine]);
-      return container;
-    } else if (color === "ANCHOR") {
-      // Anchor Visual: Metallic Orange / Copper
-      const circle = this.add.circle(0, 0, size / 2 - 2, 0xd35400); // Rust Orange
-      circle.setStrokeStyle(2, 0xff8c00); // Dark Orange border
-
-      // Rivets (Darker Brown)
-      const rivets = this.add.graphics();
-      rivets.fillStyle(0x6e2c00, 1); // Very Dark Orange/Brown
-      rivets.fillCircle(-size / 3, 0, 2);
-      rivets.fillCircle(size / 3, 0, 2);
-      rivets.fillCircle(0, -size / 3, 2);
-      rivets.fillCircle(0, size / 3, 2);
-
-      // Anchor Symbol (Light Orange/Cream)
-      const anchor = this.add.graphics();
-      anchor.lineStyle(3, 0xffe0b2, 1); // Light Orange/Cream
-
-      // Vertical line
-      anchor.beginPath();
-      anchor.moveTo(0, -size / 4);
-      anchor.lineTo(0, size / 4);
-      anchor.strokePath();
-
-      // Crossbar
-      anchor.beginPath();
-      anchor.moveTo(-size / 6, -size / 6);
-      anchor.lineTo(size / 6, -size / 6);
-      anchor.strokePath();
-
-      // Bottom Curve
-      anchor.beginPath();
-      anchor.arc(0, 0, size / 4, 0.1 * Math.PI, 0.9 * Math.PI, false);
-      anchor.strokePath();
-
-      // Ring at top
-      anchor.lineStyle(2, 0xffe0b2, 1);
-      anchor.strokeCircle(0, -size / 4 - 3, 3);
-
-      // Shine
-      const shine = this.add.circle(
-        -size / 6,
-        -size / 6,
-        size / 8,
-        0xffffff,
-        0.4
-      );
-
-      container.add([circle, rivets, anchor, shine]);
-      return container;
-    } else if (color.startsWith("CHAMELEON:")) {
-      const baseColor = color.split(":")[1];
-      const hexColor = Phaser.Display.Color.HexStringToColor(baseColor).color;
-
-      // 1. Outer Glow (Pulsing)
-      const glow = this.add.circle(0, 0, size / 2 + 4, hexColor, 0.4);
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.1,
-        scale: 1.2,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-      });
-
-      // 2. Base Bubble
-      const circle = this.add.circle(0, 0, size / 2 - 2, hexColor);
-      circle.setStrokeStyle(3, 0xffffff); // Thicker border
-
-      // 3. Scales Texture (Scaled to fit)
-      const scales = this.add.image(0, 0, "chameleon_scales");
-      scales.setDisplaySize(size, size);
-      scales.setAlpha(0.8);
-
-      // 4. Rotating Dashed Ring (Scaled to fit)
-      const ring = this.add.image(0, 0, "chameleon_ring");
-      ring.setDisplaySize(size, size);
-      this.tweens.add({
-        targets: ring,
-        angle: 360,
-        duration: 4000,
-        repeat: -1,
-      });
-
-      // 5. Question Mark (Dynamic Size)
-      const overlay = this.add.text(0, 0, "?", {
-        fontFamily: "Pixelify Sans",
-        fontSize: `${size * 0.7}px`, // Dynamic: 70% of bubble size
-        color: "#FFFFFF",
-        fontStyle: "bold",
-        stroke: "#000000",
-        strokeThickness: Math.max(3, size * 0.1),
-      });
-      overlay.setOrigin(0.5);
-
-      // 6. Shine
-      const shine = this.add.circle(
-        -size / 6,
-        -size / 6,
-        size / 8,
-        0xffffff,
-        0.8
-      );
-
-      container.add([glow, circle, scales, ring, overlay, shine]);
-      return container;
-    }
-
-    // Base bubble
-    const circle = this.add.circle(
-      0,
-      0,
-      size / 2 - 2,
-      Phaser.Display.Color.HexStringToColor(color).color
-    );
-    circle.setStrokeStyle(2, 0xffffff);
-
-    // Shine (Retro highlight)
-    const shine = this.add.circle(
-      -size / 6,
-      -size / 6,
-      size / 8,
-      0xffffff,
-      0.6
-    );
-
-    container.add([circle, shine]);
-    return container;
+    return BubbleVisuals.create(this, x, y, size, color);
   }
 
   getBubblePos(row: number, col: number) {
@@ -1049,13 +861,26 @@ export class GameScene extends Phaser.Scene {
       // Bubble Collision
       const pos = this.getGridPos(bubble.x, bubble.y);
       if (this.grid[pos.row] && this.grid[pos.row][pos.col]) {
+        // Direct hit on an existing bubble (rare but possible if fast)
+        if (
+          this.grid[pos.row][pos.col] === "SLIME" &&
+          !bubble.isSpecial &&
+          !bubble.isBomb &&
+          !bubble.isIceLance
+        ) {
+          this.cureSlime(pos.row, pos.col, bubble.color);
+          if (bubble.sprite) bubble.sprite.destroy();
+          this.flyingBubbles.splice(i, 1);
+          continue;
+        }
+
         if (bubble.isIceLance) {
           // Ice Lance destroys the bubble and continues
           const color = this.grid[pos.row][pos.col]!;
 
-          // Anchor is immune to Ice Lance
-          if (color === "ANCHOR") {
-            // Lance breaks on Anchor
+          // Anchor, Slime and Prism are immune to Ice Lance
+          if (color === "ANCHOR" || color === "SLIME" || color === "PRISM") {
+            // Lance breaks on Anchor, Slime or Prism
             if (bubble.sprite) bubble.sprite.destroy();
             this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
             this.flyingBubbles.splice(i, 1);
@@ -1105,9 +930,13 @@ export class GameScene extends Phaser.Scene {
                 // Ice Lance destroys the bubble and continues
                 const color = this.grid[r][c]!;
 
-                // Anchor is immune to Ice Lance
-                if (color === "ANCHOR") {
-                  // Lance breaks on Anchor
+                // Anchor, Slime and Prism are immune to Ice Lance
+                if (
+                  color === "ANCHOR" ||
+                  color === "SLIME" ||
+                  color === "PRISM"
+                ) {
+                  // Lance breaks on Anchor, Slime or Prism
                   if (bubble.sprite) bubble.sprite.destroy();
                   this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
                   this.flyingBubbles.splice(i, 1);
@@ -1132,6 +961,20 @@ export class GameScene extends Phaser.Scene {
                 // But we need to make sure we don't destroy the same bubble twice or glitch
                 // Since we set grid[r][c] to null, it won't be checked again.
               } else {
+                // Check for Slime Cure (Standard bubbles only)
+                if (
+                  this.grid[r][c] === "SLIME" &&
+                  !bubble.isSpecial &&
+                  !bubble.isBomb &&
+                  !bubble.isIceLance
+                ) {
+                  this.cureSlime(r, c, bubble.color);
+                  if (bubble.sprite) bubble.sprite.destroy();
+                  this.flyingBubbles.splice(i, 1);
+                  collided = true;
+                  break;
+                }
+
                 this.snapBubbleToGrid(bubble);
                 this.flyingBubbles.splice(i, 1);
                 collided = true;
@@ -1290,8 +1133,8 @@ export class GameScene extends Phaser.Scene {
         neighbors.forEach((n) => {
           if (this.grid[n.r][n.c]) {
             const val = this.grid[n.r][n.c]!;
-            // Anchor is immune to Bomb
-            if (val === "ANCHOR") return;
+            // Anchor, Slime and Prism are immune to Bomb
+            if (val === "ANCHOR" || val === "SLIME" || val === "PRISM") return;
 
             this.grid[n.r][n.c] = null;
             if (this.bubbleSprites[n.r][n.c]) {
@@ -1310,8 +1153,9 @@ export class GameScene extends Phaser.Scene {
           secondNeighbors.forEach((sn) => {
             if (this.grid[sn.r][sn.c]) {
               const val = this.grid[sn.r][sn.c]!;
-              // Anchor is immune to Bomb
-              if (val === "ANCHOR") return;
+              // Anchor, Slime and Prism are immune to Bomb
+              if (val === "ANCHOR" || val === "SLIME" || val === "PRISM")
+                return;
 
               this.grid[sn.r][sn.c] = null;
               if (this.bubbleSprites[sn.r][sn.c]) {
@@ -1372,8 +1216,12 @@ export class GameScene extends Phaser.Scene {
 
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
-          // Anchor is immune to Color Blast (Pinky)
-          if (targetColor !== "ANCHOR") {
+          // Anchor, Slime and Prism are immune to Color Blast (Pinky)
+          if (
+            targetColor !== "ANCHOR" &&
+            targetColor !== "SLIME" &&
+            targetColor !== "PRISM"
+          ) {
             // Destroy all bubbles of this specific color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
               const maxCols =
@@ -1434,6 +1282,8 @@ export class GameScene extends Phaser.Scene {
 
     // Update Chameleons
     this.updateChameleons();
+    // Update Slime Contagion
+    this.updateSlime();
 
     // Check Game Over
     this.checkGameOver();
@@ -1552,7 +1402,8 @@ export class GameScene extends Phaser.Scene {
 
   checkAndRemoveMatches(row: number, col: number, bubble?: Bubble) {
     const color = this.grid[row][col];
-    if (!color || color === "STONE") return;
+    if (!color || color === "STONE" || color === "ANCHOR" || color === "SLIME")
+      return;
 
     // If Wild (Whitey), it matches with ANY neighbor color
     // Actually, usually Wild changes to the color it hits, or acts as a bridge.
@@ -1591,7 +1442,7 @@ export class GameScene extends Phaser.Scene {
           this.playPopAnimation(
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
-            color
+            this.grid[r][c] === "PRISM" ? "#FFFFFF" : color
           );
           sprite.destroy();
           this.bubbleSprites[r][c] = null;
@@ -1637,15 +1488,30 @@ export class GameScene extends Phaser.Scene {
 
       const currentBaseColor = getBaseColor(currentVal);
 
-      if (currentBaseColor === targetBaseColor) {
+      // PRISM matches with ANY color (except Stone/Anchor/Slime)
+      const isPrism = currentVal === "PRISM";
+      const isTargetPrism = targetBaseColor === "PRISM";
+
+      // Valid match if colors match OR one of them is a Prism
+      // But Prisms don't match with Stone/Anchor/Slime
+      const isValidMatch =
+        currentBaseColor === targetBaseColor ||
+        (isPrism &&
+          targetBaseColor !== "STONE" &&
+          targetBaseColor !== "ANCHOR" &&
+          targetBaseColor !== "SLIME") ||
+        (isTargetPrism &&
+          currentBaseColor !== "STONE" &&
+          currentBaseColor !== "ANCHOR" &&
+          currentBaseColor !== "SLIME");
+
+      if (isValidMatch) {
         matches.push({ r, c });
         const neighbors = this.getNeighbors(r, c);
         neighbors.forEach((n) => {
           if (this.grid[n.r] && this.grid[n.r][n.c]) {
-            const neighborVal = this.grid[n.r][n.c]!;
-            if (getBaseColor(neighborVal) === targetBaseColor) {
-              queue.push(n);
-            }
+            // Add neighbors to queue to check them
+            queue.push(n);
           }
         });
       }
@@ -2035,5 +1901,88 @@ export class GameScene extends Phaser.Scene {
 
       container.add([glow, crystal, core]);
     }
+  }
+
+  updateSlime() {
+    this.slimeTurnCount++;
+    // Contagion happens every 4 shots
+    if (this.slimeTurnCount % 4 !== 0) return;
+
+    const allCandidates: { r: number; c: number }[] = [];
+
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        if (this.grid[r][c] === "SLIME") {
+          // Find valid neighbors to infect
+          const neighbors = this.getNeighbors(r, c);
+          const candidates = neighbors.filter((n) => {
+            // Must be a valid grid position
+            if (!this.isValidPos(n.r, n.c)) return false;
+            // Must have a bubble
+            const val = this.grid[n.r][n.c];
+            if (!val) return false;
+            // Must NOT be row 0 (Ceiling immunity)
+            if (n.r === 0) return false;
+            // Must NOT be special (Stone, Anchor, Slime, Chameleon, Prism)
+            if (
+              val === "STONE" ||
+              val === "ANCHOR" ||
+              val === "SLIME" ||
+              val === "PRISM" ||
+              val.startsWith("CHAMELEON:")
+            )
+              return false;
+            return true;
+          });
+
+          allCandidates.push(...candidates);
+        }
+      }
+    }
+
+    // Infect EXACTLY ONE random neighbor per turn (if possible)
+    if (allCandidates.length > 0) {
+      const victim =
+        allCandidates[Math.floor(Math.random() * allCandidates.length)];
+
+      // Double check it hasn't been removed or changed in the meantime
+      if (this.grid[victim.r][victim.c]) {
+        this.grid[victim.r][victim.c] = "SLIME";
+        if (this.bubbleSprites[victim.r][victim.c]) {
+          this.bubbleSprites[victim.r][victim.c]!.destroy();
+          this.createBubbleSprite(victim.r, victim.c, "SLIME");
+        }
+      }
+    }
+  }
+
+  cureSlime(row: number, col: number, newColor: string) {
+    // Visual effect for curing
+    if (this.bubbleSprites[row][col]) {
+      const sprite = this.bubbleSprites[row][col]!;
+      // Play a small transformation effect
+      this.tweens.add({
+        targets: sprite,
+        scale: 1.2,
+        alpha: 0.5,
+        duration: 100,
+        yoyo: true,
+        onComplete: () => {
+          sprite.destroy();
+          // Create new bubble
+          this.grid[row][col] = newColor;
+          this.createBubbleSprite(row, col, newColor);
+          // Check for matches immediately
+          this.checkAndRemoveMatches(row, col);
+        },
+      });
+    } else {
+      // Fallback if no sprite
+      this.grid[row][col] = newColor;
+      this.createBubbleSprite(row, col, newColor);
+      this.checkAndRemoveMatches(row, col);
+    }
+    this.playSound("sfx_pop", { volume: 0.5, rate: 1.5 }); // Higher pitch pop
   }
 }
