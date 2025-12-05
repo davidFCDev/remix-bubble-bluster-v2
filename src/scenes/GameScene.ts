@@ -110,6 +110,36 @@ export class GameScene extends Phaser.Scene {
     graphics.fillCircle(4, 4, 4);
     graphics.generateTexture("particle", 8, 8);
 
+    // Generate Chameleon Scales Texture
+    const scalesGraphics = this.make.graphics({ x: 0, y: 0 });
+    scalesGraphics.fillStyle(0x000000, 0.2);
+    for (let i = -5; i <= 5; i++) {
+      for (let j = -5; j <= 5; j++) {
+        if ((i + j) % 2 === 0 && Math.abs(i) + Math.abs(j) < 8) {
+          scalesGraphics.fillCircle(32 + i * 6, 32 + j * 6, 2);
+        }
+      }
+    }
+    scalesGraphics.generateTexture("chameleon_scales", 64, 64);
+
+    // Generate Chameleon Ring Texture
+    const ringGraphics = this.make.graphics({ x: 0, y: 0 });
+    ringGraphics.lineStyle(3, 0xffffff, 0.8);
+    const ringRadius = 32 - 3; // Close to edge of 64x64
+    const dashLength = Math.PI / 4;
+    for (let i = 0; i < 4; i++) {
+      ringGraphics.beginPath();
+      ringGraphics.arc(
+        32,
+        32,
+        ringRadius,
+        i * (Math.PI / 2),
+        i * (Math.PI / 2) + dashLength
+      );
+      ringGraphics.strokePath();
+    }
+    ringGraphics.generateTexture("chameleon_ring", 64, 64);
+
     // Game Container (for grid and bubbles)
     this.gameContainer = this.add.container(0, this.GRID_OFFSET_Y);
 
@@ -396,9 +426,17 @@ export class GameScene extends Phaser.Scene {
         // if (row > 0 && Math.random() < 0.05) {
         //   color = "STONE";
         // } else
+        // if (row > 0 && Math.random() < 0.1) {
+        //   // 10% chance for Anchor (Increased for testing)
+        //   color = "ANCHOR";
+        // } else
         if (row > 0 && Math.random() < 0.1) {
-          // 10% chance for Anchor (Increased for testing)
-          color = "ANCHOR";
+          // 10% chance for Chameleon
+          const baseColor =
+            GameSettings.colors.all[
+              Math.floor(Math.random() * GameSettings.colors.all.length)
+            ];
+          color = `CHAMELEON:${baseColor}`;
         } else {
           color =
             GameSettings.colors.all[
@@ -574,6 +612,62 @@ export class GameScene extends Phaser.Scene {
       );
 
       container.add([circle, rivets, anchor, shine]);
+      return container;
+    } else if (color.startsWith("CHAMELEON:")) {
+      const baseColor = color.split(":")[1];
+      const hexColor = Phaser.Display.Color.HexStringToColor(baseColor).color;
+
+      // 1. Outer Glow (Pulsing)
+      const glow = this.add.circle(0, 0, size / 2 + 4, hexColor, 0.4);
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.1,
+        scale: 1.2,
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+      });
+
+      // 2. Base Bubble
+      const circle = this.add.circle(0, 0, size / 2 - 2, hexColor);
+      circle.setStrokeStyle(3, 0xffffff); // Thicker border
+
+      // 3. Scales Texture (Scaled to fit)
+      const scales = this.add.image(0, 0, "chameleon_scales");
+      scales.setDisplaySize(size, size);
+      scales.setAlpha(0.8);
+
+      // 4. Rotating Dashed Ring (Scaled to fit)
+      const ring = this.add.image(0, 0, "chameleon_ring");
+      ring.setDisplaySize(size, size);
+      this.tweens.add({
+        targets: ring,
+        angle: 360,
+        duration: 4000,
+        repeat: -1,
+      });
+
+      // 5. Question Mark (Dynamic Size)
+      const overlay = this.add.text(0, 0, "?", {
+        fontFamily: "Pixelify Sans",
+        fontSize: `${size * 0.7}px`, // Dynamic: 70% of bubble size
+        color: "#FFFFFF",
+        fontStyle: "bold",
+        stroke: "#000000",
+        strokeThickness: Math.max(3, size * 0.1),
+      });
+      overlay.setOrigin(0.5);
+
+      // 6. Shine
+      const shine = this.add.circle(
+        -size / 6,
+        -size / 6,
+        size / 8,
+        0xffffff,
+        0.8
+      );
+
+      container.add([glow, circle, scales, ring, overlay, shine]);
       return container;
     }
 
@@ -1156,6 +1250,25 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  getBubbleType(value: string) {
+    if (value === "STONE") return "STONE";
+    if (value === "ANCHOR") return "ANCHOR";
+    if (value.startsWith("ICE:")) return "ICE";
+    if (value.startsWith("CLOCK:")) return "CLOCK";
+    if (value.startsWith("CHAMELEON:")) return "CHAMELEON";
+    if (value === "SLIME") return "SLIME";
+    if (value === "RAINBOW") return "RAINBOW";
+    if (value === "BLACKHOLE") return "BLACKHOLE";
+    return "NORMAL";
+  }
+
+  getBubbleColor(value: string) {
+    if (value.startsWith("ICE:")) return value.split(":")[1];
+    if (value.startsWith("CLOCK:")) return value.split(":")[1];
+    if (value.startsWith("CHAMELEON:")) return value.split(":")[1];
+    return value;
+  }
+
   snapBubbleToGrid(bubble: Bubble) {
     if (!bubble) return;
 
@@ -1319,8 +1432,34 @@ export class GameScene extends Phaser.Scene {
       this.shotCount = 0;
     }
 
+    // Update Chameleons
+    this.updateChameleons();
+
     // Check Game Over
     this.checkGameOver();
+  }
+
+  updateChameleons() {
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        const val = this.grid[r][c];
+        if (val && val.startsWith("CHAMELEON:")) {
+          // Pick new random color
+          const newColor =
+            GameSettings.colors.all[
+              Math.floor(Math.random() * GameSettings.colors.all.length)
+            ];
+          this.grid[r][c] = `CHAMELEON:${newColor}`;
+
+          // Update Visual
+          if (this.bubbleSprites[r][c]) {
+            this.bubbleSprites[r][c]!.destroy();
+            this.createBubbleSprite(r, c, this.grid[r][c]!);
+          }
+        }
+      }
+    }
   }
 
   findNearestEmptySpot(x: number, y: number) {
@@ -1477,18 +1616,36 @@ export class GameScene extends Phaser.Scene {
     const visited = new Set<string>();
     const queue = [{ r: row, c: col }];
 
+    // Helper to extract base color from special types like CHAMELEON
+    const getBaseColor = (val: string) => {
+      if (val.startsWith("CHAMELEON:")) {
+        return val.split(":")[1];
+      }
+      return val;
+    };
+
+    const targetBaseColor = getBaseColor(color);
+
     while (queue.length > 0) {
       const { r, c } = queue.pop()!;
       const key = `${r},${c}`;
       if (visited.has(key)) continue;
       visited.add(key);
 
-      if (this.grid[r][c] === color) {
+      const currentVal = this.grid[r][c];
+      if (!currentVal) continue;
+
+      const currentBaseColor = getBaseColor(currentVal);
+
+      if (currentBaseColor === targetBaseColor) {
         matches.push({ r, c });
         const neighbors = this.getNeighbors(r, c);
         neighbors.forEach((n) => {
-          if (this.grid[n.r] && this.grid[n.r][n.c] === color) {
-            queue.push(n);
+          if (this.grid[n.r] && this.grid[n.r][n.c]) {
+            const neighborVal = this.grid[n.r][n.c]!;
+            if (getBaseColor(neighborVal) === targetBaseColor) {
+              queue.push(n);
+            }
           }
         });
       }
