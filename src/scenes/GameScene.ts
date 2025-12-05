@@ -10,6 +10,7 @@ interface Bubble {
   isSpecial?: boolean;
   isWild?: boolean;
   isBomb?: boolean;
+  isIceLance?: boolean;
   sprite?:
     | Phaser.GameObjects.Arc
     | Phaser.GameObjects.Sprite
@@ -17,6 +18,9 @@ interface Bubble {
 }
 
 export class GameScene extends Phaser.Scene {
+  private static musicPlaylist: number[] = [];
+  private static currentPlaylistIndex: number = 0;
+
   private grid: (string | null)[][] = [];
   private bubbleSprites: (Phaser.GameObjects.Arc | null)[][] = [];
   private currentBubble: Bubble | null = null;
@@ -32,10 +36,15 @@ export class GameScene extends Phaser.Scene {
   private selectedCharacter: any = null;
   private abilityAvailable: boolean = true;
   private whiteyWildShotsLeft: number = 0;
+  private canShoot: boolean = true;
+  private shootDelay: number = 500; // ms
+  private levelTime: number = 0;
+  private timerEvent: Phaser.Time.TimerEvent | null = null;
 
   // UI
   private scoreText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
   private nextBubblePreviews: Phaser.GameObjects.Container[] = [];
   private trajectoryGraphics!: Phaser.GameObjects.Graphics;
   private ceilingGraphics!: Phaser.GameObjects.Graphics;
@@ -74,6 +83,8 @@ export class GameScene extends Phaser.Scene {
     this.abilityAvailable = true;
     this.whiteyWildShotsLeft = 0;
     this.launcherAngle = Math.PI / 2;
+    this.canShoot = true;
+    this.levelTime = GameSettings.gameplay.levelTime;
   }
 
   create() {
@@ -132,21 +143,23 @@ export class GameScene extends Phaser.Scene {
     const headerY = 40;
     const fontStyle = {
       fontFamily: "Pixelify Sans",
-      fontSize: "24px",
+      fontSize: "32px", // Increased from 24px
       color: "#B7FF00", // Neon Green
       align: "center",
+      fontStyle: "bold",
     };
 
     this.scoreText = this.add
-      .text(width * 0.3, headerY, "Score: 0", fontStyle)
+      .text(width * 0.25, headerY, "Score: 0", fontStyle)
       .setOrigin(0.5);
 
     this.levelText = this.add
       .text(width * 0.5, headerY, "Level: 1", fontStyle)
       .setOrigin(0.5);
 
-    // Placeholder for Time if needed, or just decoration
-    this.add.text(width * 0.7, headerY, "Time: 10s", fontStyle).setOrigin(0.5);
+    this.timerText = this.add
+      .text(width * 0.75, headerY, "Time: 0", fontStyle)
+      .setOrigin(0.5);
 
     // Next Bubbles UI (Bottom Right)
     // Positioned at bottom right corner
@@ -215,7 +228,7 @@ export class GameScene extends Phaser.Scene {
     this.startLevel();
 
     // Play Music
-    this.playRandomMusic();
+    this.playBackgroundMusic();
   }
 
   drawLimitLine() {
@@ -257,6 +270,7 @@ export class GameScene extends Phaser.Scene {
       "pointerdown",
       (pointer: any, localX: any, localY: any, event: any) => {
         event.stopPropagation(); // Prevent shooting when clicking skill
+        this.playSound("sfx_button");
         this.activateAbility();
       }
     );
@@ -267,20 +281,34 @@ export class GameScene extends Phaser.Scene {
     this.gameStarted = true;
   }
 
-  playRandomMusic() {
+  playBackgroundMusic() {
+    // Initialize playlist if empty
+    if (GameScene.musicPlaylist.length === 0) {
+      const indices = GameSettings.assets.music.map((_, i) => i);
+      GameScene.musicPlaylist = Phaser.Utils.Array.Shuffle(indices);
+      GameScene.currentPlaylistIndex = 0;
+    }
+
     if (this.currentMusic) {
       this.currentMusic.stop();
     }
 
-    const musicCount = GameSettings.assets.music.length;
-    const randomIndex = Phaser.Math.Between(0, musicCount - 1);
-    const musicKey = `bgm_${randomIndex}`;
+    const index = GameScene.musicPlaylist[GameScene.currentPlaylistIndex];
+    const musicKey = `bgm_${index}`;
 
     this.currentMusic = this.sound.add(musicKey, {
       volume: 0.3,
-      loop: true,
+      loop: false,
     });
     this.currentMusic.play();
+
+    // Advance playlist index for next time (or if this song ends)
+    GameScene.currentPlaylistIndex =
+      (GameScene.currentPlaylistIndex + 1) % GameScene.musicPlaylist.length;
+
+    this.currentMusic.once("complete", () => {
+      this.playBackgroundMusic();
+    });
   }
 
   setRandomBackground() {
@@ -318,6 +346,30 @@ export class GameScene extends Phaser.Scene {
     this.abilityAvailable = true;
     if (this.skillBtn) this.skillBtn.setAlpha(1);
 
+    // Reset Timer
+    this.levelTime = GameSettings.gameplay.levelTime;
+    if (this.timerEvent) this.timerEvent.remove();
+    this.timerEvent = this.time.addEvent({
+      delay: 1000,
+      callback: this.onTimerTick,
+      callbackScope: this,
+      loop: true,
+    });
+    this.updateUI();
+
+    // Cleanup visual glitches (ghost bubbles)
+    if (this.currentBubble && this.currentBubble.sprite) {
+      this.currentBubble.sprite.destroy();
+    }
+    this.currentBubble = null;
+
+    this.flyingBubbles.forEach((b) => {
+      if (b.sprite) b.sprite.destroy();
+    });
+    this.flyingBubbles = [];
+
+    this.lastSpeechText = ""; // Reset speech check
+
     // Reset Grid
     this.grid = Array(this.GRID_HEIGHT)
       .fill(null)
@@ -339,12 +391,19 @@ export class GameScene extends Phaser.Scene {
       const isOddRow = row % 2 === 1;
       const numBubbles = isOddRow ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       for (let col = 0; col < numBubbles; col++) {
-        const color =
-          GameSettings.colors.all[
-            Math.floor(Math.random() * GameSettings.colors.all.length)
-          ];
+        let color;
+        // 5% chance for Stone, but NEVER on row 0 (ceiling)
+        if (row > 0 && Math.random() < 0.05) {
+          color = "STONE";
+        } else {
+          color =
+            GameSettings.colors.all[
+              Math.floor(Math.random() * GameSettings.colors.all.length)
+            ];
+          usedColors.add(color);
+        }
+
         this.grid[row][col] = color;
-        usedColors.add(color);
         this.createBubbleSprite(row, col, color);
       }
     }
@@ -430,6 +489,41 @@ export class GameScene extends Phaser.Scene {
   createBubbleVisual(x: number, y: number, size: number, color: string) {
     const container = this.add.container(x, y);
 
+    if (color === "STONE") {
+      // Stone Visual: Shiny Obsidian Black
+      const circle = this.add.circle(0, 0, size / 2 - 2, 0x000000);
+      circle.setStrokeStyle(2, 0x888888); // Metallic grey border
+
+      // Cracks / Texture (Subtle Grey)
+      const graphics = this.add.graphics();
+      graphics.lineStyle(2, 0x444444);
+
+      // Crack 1
+      graphics.beginPath();
+      graphics.moveTo(-size / 4, -size / 4);
+      graphics.lineTo(0, 0);
+      graphics.lineTo(size / 4, -size / 8);
+      graphics.strokePath();
+
+      // Crack 2
+      graphics.beginPath();
+      graphics.moveTo(0, 0);
+      graphics.lineTo(-size / 8, size / 3);
+      graphics.strokePath();
+
+      // Standard Shine (Top Left) - Same as other bubbles
+      const shine = this.add.circle(
+        -size / 6,
+        -size / 6,
+        size / 8,
+        0xffffff,
+        0.6
+      );
+
+      container.add([circle, graphics, shine]);
+      return container;
+    }
+
     // Base bubble
     const circle = this.add.circle(
       0,
@@ -467,14 +561,23 @@ export class GameScene extends Phaser.Scene {
     for (let r = 0; r < this.GRID_HEIGHT; r++) {
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       for (let c = 0; c < maxCols; c++) {
-        if (this.grid[r][c]) {
-          gridColors.add(this.grid[r][c]!);
+        const val = this.grid[r][c];
+        if (val) {
+          // Only add standard colors (hex codes) to the pool
+          // Exclude special types like STONE, ICE, etc.
+          if (val.startsWith("#")) {
+            gridColors.add(val);
+          }
         }
       }
     }
 
     // Also include colors currently in the queue (nextBubbles) to avoid starvation if grid is empty but queue has colors
-    this.nextBubbles.forEach((c) => gridColors.add(c));
+    this.nextBubbles.forEach((c) => {
+      if (c.startsWith("#")) {
+        gridColors.add(c);
+      }
+    });
 
     // If we have colors on grid, pick from them. Otherwise fallback to all colors (e.g. start of game or empty grid)
     const pool = gridColors.size > 0 ? Array.from(gridColors) : availableColors;
@@ -524,19 +627,66 @@ export class GameScene extends Phaser.Scene {
     this.updateUI();
   }
 
-  shootBubble() {
-    if (this.currentBubble && !this.currentBubble.moving) {
-      const speed = 15; // Increased speed for Phaser
-      this.currentBubble.velocity.x = Math.cos(this.launcherAngle) * speed;
-      this.currentBubble.velocity.y = -Math.sin(this.launcherAngle) * speed;
-      this.currentBubble.moving = true;
-
-      this.flyingBubbles.push(this.currentBubble);
-      this.currentBubble = null;
-
-      this.shotCount++;
-      this.spawnBubble();
+  private playSound(key: string, config?: Phaser.Types.Sound.SoundConfig) {
+    // Check if the sound exists in the manager or cache before playing
+    if (this.sound.get(key) || this.cache.audio.exists(key)) {
+      this.sound.play(key, config);
     }
+    // Silently ignore missing sounds to prevent console spam/lag
+  }
+
+  shootBubble() {
+    if (!this.canShoot || !this.currentBubble) return;
+
+    // Play shoot sound safely
+    this.playSound("sfx_shoot");
+
+    this.canShoot = false;
+
+    const speed = 15; // Increased speed for Phaser
+    this.currentBubble.velocity.x = Math.cos(this.launcherAngle) * speed;
+    this.currentBubble.velocity.y = -Math.sin(this.launcherAngle) * speed;
+    this.currentBubble.moving = true;
+
+    this.flyingBubbles.push(this.currentBubble);
+    this.currentBubble = null;
+
+    this.shotCount++;
+
+    // Delay next shot
+    this.time.delayedCall(this.shootDelay, () => {
+      this.canShoot = true;
+      if (!this.gameOver && this.gameStarted) {
+        this.spawnBubble();
+      }
+    });
+  }
+
+  activateAbility() {
+    if (!this.abilityAvailable || !this.currentBubble) return;
+
+    // Play generic skill sound with reduced volume
+    this.playSound("sfx_skill", { volume: 0.4 });
+
+    if (this.selectedCharacter.id === "Pinky") {
+      this.currentBubble.color = "#FF6600";
+      this.currentBubble.isSpecial = true;
+      this.applySkillVisuals(this.currentBubble, "Pinky");
+      // this.playSound("sfx_special_pinky"); // Removed specific sound for now
+    } else if (this.selectedCharacter.id === "Bluey") {
+      this.currentBubble.color = "#000000";
+      this.currentBubble.isBomb = true;
+      this.applySkillVisuals(this.currentBubble, "Bluey");
+      // this.playSound("sfx_special_bluey"); // Removed specific sound for now
+    } else if (this.selectedCharacter.id === "Whitey") {
+      this.currentBubble.isIceLance = true;
+      this.currentBubble.color = "#00FFFF"; // Cyan/Ice color
+      this.applySkillVisuals(this.currentBubble, "Whitey");
+      // this.playSound("sfx_special_whitey"); // Removed specific sound for now
+    }
+
+    this.abilityAvailable = false;
+    this.skillBtn.setAlpha(0.5);
   }
 
   drawCeiling() {
@@ -582,9 +732,9 @@ export class GameScene extends Phaser.Scene {
     if (!this.gameStarted || this.gameOver) return;
 
     // Input Handling (Keyboard: Arrows + A/D) with Acceleration
-    const baseSpeed = 0.02;
-    const maxSpeed = 0.05; // Reduced from 0.08
-    const acceleration = 0.001; // Reduced from 0.002
+    const baseSpeed = 0.005; // Reduced for finer control on short taps
+    const maxSpeed = 0.04; // Reduced max speed for better control
+    const acceleration = 0.0015;
 
     if (this.cursors.left.isDown || this.keys.A.isDown) {
       this.launcherSpeed = Math.min(
@@ -661,22 +811,49 @@ export class GameScene extends Phaser.Scene {
         bubble.sprite.setPosition(bubble.x, bubble.y);
 
         // Rotate special bubbles
-        if (bubble.isSpecial || bubble.isBomb || bubble.isWild) {
-          (bubble.sprite as Phaser.GameObjects.Container).rotation += 0.1;
+        if (
+          bubble.isSpecial ||
+          bubble.isBomb ||
+          bubble.isWild ||
+          bubble.isIceLance
+        ) {
+          if (bubble.isIceLance) {
+            // Align rotation with velocity for Ice Lance
+            const angle = Math.atan2(bubble.velocity.y, bubble.velocity.x);
+            (bubble.sprite as Phaser.GameObjects.Container).rotation =
+              angle + Math.PI / 2;
+          } else {
+            (bubble.sprite as Phaser.GameObjects.Container).rotation += 0.1;
+          }
 
           // Particle Trail
-          if (Math.random() > 0.5) {
-            const color = bubble.isSpecial
-              ? 0xff6600
-              : bubble.isBomb
-              ? 0x333333
-              : 0x00ffff;
-            const p = this.add.circle(bubble.x, bubble.y, 3, color);
+          // More frequent and distinct for special bubbles
+          if (Math.random() > 0.3) {
+            // Increased frequency
+            let color = 0xffffff;
+            let size = 3;
+            let duration = 300;
+
+            if (bubble.isSpecial) {
+              // Pinky: Orange/Yellow trail
+              color = Math.random() > 0.5 ? 0xff6600 : 0xffff00;
+              size = 5;
+              duration = 500;
+            } else if (bubble.isBomb) {
+              color = 0x5500aa; // Dark Purple trail for Void Bomb
+            } else if (bubble.isWild) {
+              color = 0x00ffff;
+            } else if (bubble.isIceLance) {
+              color = 0xccffff; // Ice Blue
+              size = 4;
+            }
+
+            const p = this.add.circle(bubble.x, bubble.y, size, color);
             this.tweens.add({
               targets: p,
               alpha: 0,
               scale: 0,
-              duration: 300,
+              duration: duration,
               onComplete: () => p.destroy(),
             });
           }
@@ -688,6 +865,14 @@ export class GameScene extends Phaser.Scene {
         bubble.x < this.BUBBLE_SIZE / 2 ||
         bubble.x > this.cameras.main.width - this.BUBBLE_SIZE / 2
       ) {
+        if (bubble.isIceLance) {
+          // Ice Lance destroys itself on wall contact (no bounce)
+          if (bubble.sprite) bubble.sprite.destroy();
+          this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
+          this.flyingBubbles.splice(i, 1);
+          continue;
+        }
+
         bubble.velocity.x *= -1;
         bubble.x = Phaser.Math.Clamp(
           bubble.x,
@@ -701,6 +886,14 @@ export class GameScene extends Phaser.Scene {
         bubble.y <
         this.GRID_OFFSET_Y + this.ceilingOffset + this.BUBBLE_SIZE / 2
       ) {
+        if (bubble.isIceLance) {
+          // Ice Lance destroys itself on ceiling
+          if (bubble.sprite) bubble.sprite.destroy();
+          this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
+          this.flyingBubbles.splice(i, 1);
+          this.removeFloatingBubbles(); // Check for floating bubbles after destruction
+          continue;
+        }
         this.snapBubbleToGrid(bubble);
         this.flyingBubbles.splice(i, 1);
         continue;
@@ -709,6 +902,24 @@ export class GameScene extends Phaser.Scene {
       // Bubble Collision
       const pos = this.getGridPos(bubble.x, bubble.y);
       if (this.grid[pos.row] && this.grid[pos.row][pos.col]) {
+        if (bubble.isIceLance) {
+          // Ice Lance destroys the bubble and continues
+          const color = this.grid[pos.row][pos.col]!;
+          this.grid[pos.row][pos.col] = null;
+          if (this.bubbleSprites[pos.row][pos.col]) {
+            const sprite = this.bubbleSprites[pos.row][pos.col]!;
+            this.playPopAnimation(
+              sprite.x + this.gameContainer.x,
+              sprite.y + this.gameContainer.y,
+              color
+            );
+            sprite.destroy();
+            this.bubbleSprites[pos.row][pos.col] = null;
+            this.score += 50; // Bonus points for lance destruction
+          }
+          // Do NOT stop the lance, continue loop
+          continue;
+        }
         this.snapBubbleToGrid(bubble);
         this.flyingBubbles.splice(i, 1);
         continue;
@@ -733,10 +944,31 @@ export class GameScene extends Phaser.Scene {
               worldBy
             );
             if (dist < this.BUBBLE_SIZE * 0.9) {
-              this.snapBubbleToGrid(bubble);
-              this.flyingBubbles.splice(i, 1);
-              collided = true;
-              break;
+              if (bubble.isIceLance) {
+                // Ice Lance destroys the bubble and continues
+                const color = this.grid[r][c]!;
+                this.grid[r][c] = null;
+                if (this.bubbleSprites[r][c]) {
+                  const sprite = this.bubbleSprites[r][c]!;
+                  this.playPopAnimation(
+                    sprite.x + this.gameContainer.x,
+                    sprite.y + this.gameContainer.y,
+                    color
+                  );
+                  sprite.destroy();
+                  this.bubbleSprites[r][c] = null;
+                  this.score += 50;
+                }
+                // Do NOT stop, continue checking other collisions?
+                // Actually, we should probably break this inner loop but NOT splice the flying bubble
+                // But we need to make sure we don't destroy the same bubble twice or glitch
+                // Since we set grid[r][c] to null, it won't be checked again.
+              } else {
+                this.snapBubbleToGrid(bubble);
+                this.flyingBubbles.splice(i, 1);
+                collided = true;
+                break;
+              }
             }
           }
         }
@@ -917,28 +1149,48 @@ export class GameScene extends Phaser.Scene {
         this.removeFloatingBubbles();
         this.updateUI();
       } else if (bubble.isSpecial) {
-        // Color Blast (Pinky): Destroy all bubbles of the touched color
-        // Find neighbors first to see what color we touched
+        // Color Blast (Pinky): Destroy all bubbles of the TARGET color (closest neighbor)
+        // Find the neighbor that we collided "most" with (closest center distance)
         const neighbors = this.getNeighbors(pos.row, pos.col);
-        const touchedColors = new Set<string>();
-        neighbors.forEach((n) => {
-          if (this.grid[n.r][n.c]) touchedColors.add(this.grid[n.r][n.c]!);
-        });
+        let closestNeighbor: { r: number; c: number; color: string } | null =
+          null;
+        let minDistance = Infinity;
 
-        if (touchedColors.size > 0) {
-          // Destroy all bubbles of these colors
+        for (const n of neighbors) {
+          if (this.grid[n.r][n.c]) {
+            const { x: nx, y: ny } = this.getBubblePos(n.r, n.c);
+            // Calculate world Y for neighbor to compare with bubble world Y
+            const worldNy = ny + this.ceilingOffset + this.GRID_OFFSET_Y;
+
+            // Use the bubble's impact position (bubble.x, bubble.y)
+            const dist = Phaser.Math.Distance.Between(
+              bubble.x,
+              bubble.y,
+              nx,
+              worldNy
+            );
+
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestNeighbor = { r: n.r, c: n.c, color: this.grid[n.r][n.c]! };
+            }
+          }
+        }
+
+        if (closestNeighbor && closestNeighbor.color) {
+          const targetColor = closestNeighbor.color;
+          // Destroy all bubbles of this specific color
           for (let r = 0; r < this.GRID_HEIGHT; r++) {
             const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
             for (let c = 0; c < maxCols; c++) {
-              if (this.grid[r][c] && touchedColors.has(this.grid[r][c]!)) {
-                const color = this.grid[r][c]!;
+              if (this.grid[r][c] === targetColor) {
                 this.grid[r][c] = null;
                 if (this.bubbleSprites[r][c]) {
                   const sprite = this.bubbleSprites[r][c]!;
                   this.playPopAnimation(
                     sprite.x + this.gameContainer.x,
                     sprite.y + this.gameContainer.y,
-                    color
+                    targetColor
                   );
                   sprite.destroy();
                   this.bubbleSprites[r][c] = null;
@@ -972,11 +1224,10 @@ export class GameScene extends Phaser.Scene {
 
     // Check Ceiling Drop
     // Progressive difficulty: Ceiling drops faster as level increases
-    // Base is e.g. 6 shots. Level 1: 6. Level 3: 5. Level 5: 4. Min 2.
+    // Base is 10 shots. Decreases by 1 every level. Min 3 shots.
     const shotsPerDrop = Math.max(
-      2,
-      GameSettings.gameplay.baseShotsPerCeilingDrop -
-        Math.floor((this.level - 1) / 2)
+      3,
+      GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1)
     );
 
     if (this.shotCount >= shotsPerDrop) {
@@ -1078,7 +1329,7 @@ export class GameScene extends Phaser.Scene {
 
   checkAndRemoveMatches(row: number, col: number, bubble?: Bubble) {
     const color = this.grid[row][col];
-    if (!color) return;
+    if (!color || color === "STONE") return;
 
     // If Wild (Whitey), it matches with ANY neighbor color
     // Actually, usually Wild changes to the color it hits, or acts as a bridge.
@@ -1235,6 +1486,7 @@ export class GameScene extends Phaser.Scene {
     if (this.checkLevelComplete()) {
       this.gameStarted = false;
       this.level++;
+      this.playSound("sfx_level_complete", { volume: 0.4 });
       this.time.delayedCall(1000, () => {
         this.startLevel();
       });
@@ -1252,54 +1504,65 @@ export class GameScene extends Phaser.Scene {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
           if (y + this.ceilingOffset + this.GRID_OFFSET_Y > this.LIMIT_LINE_Y) {
-            this.gameOver = true;
-            this.add
-              .text(
-                this.cameras.main.width / 2,
-                this.cameras.main.height / 2,
-                "GAME OVER",
-                {
-                  fontSize: "64px",
-                  color: "#ff0000",
-                  fontFamily: "Pixelify Sans",
-                }
-              )
-              .setOrigin(0.5);
-            this.input.on("pointerdown", () => {
-              if (this.currentMusic) this.currentMusic.stop();
-              this.scene.start("StartScene");
-            });
+            this.handleGameOver("GAME OVER");
+            return;
           }
         }
       }
     }
   }
 
-  activateAbility() {
-    if (!this.abilityAvailable || !this.currentBubble) return;
+  handleGameOver(message: string) {
+    if (this.gameOver) return;
+    this.gameOver = true;
+    if (this.timerEvent) this.timerEvent.remove();
+    this.playSound("sfx_game_over");
 
-    if (this.selectedCharacter.id === "Pinky") {
-      this.currentBubble.color = "#FF6600";
-      this.currentBubble.isSpecial = true;
-      this.applySkillVisuals(this.currentBubble, "Pinky");
-    } else if (this.selectedCharacter.id === "Bluey") {
-      this.currentBubble.color = "#000000";
-      this.currentBubble.isBomb = true;
-      this.applySkillVisuals(this.currentBubble, "Bluey");
-    } else if (this.selectedCharacter.id === "Whitey") {
-      this.whiteyWildShotsLeft = 2; // Current + 2 next = 3 total
-      this.currentBubble.isWild = true;
-      this.currentBubble.color = "#FFFFFF";
-      this.applySkillVisuals(this.currentBubble, "Whitey");
+    this.add
+      .text(
+        this.cameras.main.width / 2,
+        this.cameras.main.height / 2,
+        message,
+        {
+          fontSize: "64px",
+          color: "#ff0000",
+          fontFamily: "Pixelify Sans",
+          fontStyle: "bold",
+          stroke: "#000000",
+          strokeThickness: 6,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(100);
+
+    this.time.delayedCall(1000, () => {
+      this.input.once("pointerdown", () => {
+        if (this.currentMusic) this.currentMusic.stop();
+        this.scene.start("StartScene");
+      });
+    });
+  }
+
+  onTimerTick() {
+    if (!this.gameStarted || this.gameOver) return;
+
+    this.levelTime--;
+    this.updateUI();
+
+    if (this.levelTime <= 0) {
+      this.handleGameOver("TIME UP");
     }
-
-    this.abilityAvailable = false;
-    this.skillBtn.setAlpha(0.5);
   }
 
   updateUI() {
     this.scoreText.setText(`Score: ${this.score}`);
     this.levelText.setText(`Level: ${this.level}`);
+    this.timerText.setText(`Time: ${this.levelTime}s`);
+    if (this.levelTime <= 10) {
+      this.timerText.setColor("#FF0000");
+    } else {
+      this.timerText.setColor("#B7FF00");
+    }
 
     this.nextBubblePreviews.forEach((preview, idx) => {
       if (this.nextBubbles[idx]) {
@@ -1313,6 +1576,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   playPopAnimation(x: number, y: number, color: string) {
+    this.playSound("sfx_pop", {
+      volume: 0.4,
+      rate: Phaser.Math.FloatBetween(0.9, 1.1),
+    });
+
+    let particleColor = 0xffffff;
+    if (color === "STONE") {
+      particleColor = 0x555555; // Grey particles for stone
+    } else {
+      particleColor = Phaser.Display.Color.HexStringToColor(color).color;
+    }
+
     // Particles Explosion
     const particles = this.add.particles(x, y, "particle", {
       speed: { min: 100, max: 300 },
@@ -1320,7 +1595,7 @@ export class GameScene extends Phaser.Scene {
       scale: { start: 1, end: 0 },
       lifespan: 600,
       blendMode: "ADD",
-      tint: Phaser.Display.Color.HexStringToColor(color).color,
+      tint: particleColor,
       quantity: 20,
       emitting: false,
       gravityY: 300,
@@ -1347,82 +1622,133 @@ export class GameScene extends Phaser.Scene {
     const size = this.BUBBLE_SIZE;
 
     if (charId === "Pinky") {
-      // Color Blast: Orange Sun/Spike
-      // Glow
-      const glow = this.add.circle(0, 0, size / 1.5, 0xff6600, 0.4);
+      // Color Blast: Textured Orange Plasma Sphere
+      // 1. Strong Outer Glow
+      const glow = this.add.circle(0, 0, size / 1.2, 0xff4400, 0.6);
       this.tweens.add({
         targets: glow,
-        alpha: 0.1,
-        scale: 1.2,
+        alpha: 0.2,
+        scale: 1.4,
         yoyo: true,
         repeat: -1,
-        duration: 500,
+        duration: 400,
       });
 
-      const bg = this.add.circle(0, 0, size / 2 - 2, 0xff6600);
-      bg.setStrokeStyle(2, 0xffffff);
+      // 2. Main Body (Orange)
+      const bg = this.add.circle(0, 0, size / 2, 0xff6600);
 
-      // Spikes
-      const spikes = this.add.graphics();
-      spikes.fillStyle(0xffff00, 0.8);
-      for (let i = 0; i < 8; i++) {
-        const angle = (i * Math.PI * 2) / 8;
-        const x = Math.cos(angle) * (size / 2.5);
-        const y = Math.sin(angle) * (size / 2.5);
-        spikes.fillCircle(x, y, 4);
+      // 3. Texture (Plasma spots)
+      const texture = this.add.graphics();
+      texture.fillStyle(0xffaa00, 0.8); // Lighter orange/yellow spots
+      for (let i = 0; i < 5; i++) {
+        const rx = Phaser.Math.Between(-size / 3, size / 3);
+        const ry = Phaser.Math.Between(-size / 3, size / 3);
+        const r = Phaser.Math.Between(2, 5);
+        texture.fillCircle(rx, ry, r);
       }
 
-      container.add([glow, bg, spikes]);
-    } else if (charId === "Bluey") {
-      // Bomb Shot: Black Bomb
-      // Pulse Red Glow
-      const glow = this.add.circle(0, 0, size / 1.5, 0xff0000, 0.3);
+      // 4. Inner Core (Bright Yellow/White)
+      const core = this.add.circle(0, 0, size / 4, 0xffffaa);
       this.tweens.add({
-        targets: glow,
-        alpha: 0.6,
+        targets: core,
+        alpha: 0.8,
         scale: 1.1,
         yoyo: true,
         repeat: -1,
-        duration: 200, // Fast pulse
+        duration: 200,
       });
 
-      const bg = this.add.circle(0, 0, size / 2 - 2, 0x000000);
-      bg.setStrokeStyle(2, 0xff0000); // Red danger stroke
+      // 5. Rotating Ring (Energy containment)
+      const ring = this.add.graphics();
+      ring.lineStyle(2, 0xffffff, 0.8);
+      ring.strokeCircle(0, 0, size / 2 + 2);
 
-      // Fuse / Skull symbol
-      const symbol = this.add
-        .text(0, 0, "!", {
-          fontFamily: "Pixelify Sans",
-          fontSize: "24px",
-          color: "#FF0000",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
+      // Add rotation to the whole container in update loop, but we can add a tween here for the ring if we separated it.
+      // Since we add everything to 'container', the whole thing rotates in update().
 
-      container.add([glow, bg, symbol]);
-    } else if (charId === "Whitey") {
-      // Color Pick: Wild White Orb
-      // Rainbow Glow
-      const glow = this.add.circle(0, 0, size / 1.5, 0x00ffff, 0.4);
+      container.add([glow, bg, texture, core, ring]);
+    } else if (charId === "Bluey") {
+      // Bomb Shot: Void / Dark Matter Sphere
+      // 1. Eerie Glow (Dark Purple/Blue)
+      const glow = this.add.circle(0, 0, size / 1.2, 0x2a0055, 0.7); // Deep purple
       this.tweens.add({
         targets: glow,
-        scale: 1.3,
         alpha: 0.2,
+        scale: 1.5,
         yoyo: true,
         repeat: -1,
-        duration: 800,
+        duration: 1200, // Slow breathing
       });
 
-      const bg = this.add.circle(0, 0, size / 2 - 2, 0xffffff);
+      // 2. Main Body (Pure Black)
+      const bg = this.add.circle(0, 0, size / 2, 0x000000);
+      bg.setStrokeStyle(2, 0x5500aa); // Purple stroke
 
-      // Rainbow/Prismatic Stroke
-      const ring = this.add.graphics();
-      ring.lineStyle(4, 0x00ffff); // Cyan ring
-      ring.strokeCircle(0, 0, size / 2 - 4);
+      // 3. Texture (Shadowy Tendrils/Cracks)
+      const texture = this.add.graphics();
+      texture.lineStyle(2, 0xaa00ff, 0.5); // Bright purple lines
+      for (let i = 0; i < 4; i++) {
+        // Random jagged lines
+        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        const r = size / 2.5;
+        texture.moveTo(0, 0);
+        texture.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+      }
+      texture.strokePath();
 
-      const inner = this.add.circle(0, 0, size / 4, 0xff00ff, 0.5); // Magenta core
+      // 4. Core (Unstable Red Eye/Core)
+      const core = this.add.circle(0, 0, size / 4, 0x330000); // Dark Red
+      const coreInner = this.add.circle(0, 0, size / 6, 0xff0000); // Bright Red
 
-      container.add([glow, bg, ring, inner]);
+      this.tweens.add({
+        targets: coreInner,
+        alpha: 0.4,
+        scale: 1.2,
+        yoyo: true,
+        repeat: -1,
+        duration: 200, // Fast flicker
+      });
+
+      container.add([glow, bg, texture, core, coreInner]);
+    } else if (charId === "Whitey") {
+      // Ice Lance: Sharp Crystal Projectile
+      // 1. Trail/Glow (Cold Blue)
+      const glow = this.add.circle(0, 0, size / 1.2, 0x00ffff, 0.5);
+      this.tweens.add({
+        targets: glow,
+        scaleX: 0.8,
+        scaleY: 1.2,
+        alpha: 0.3,
+        yoyo: true,
+        repeat: -1,
+        duration: 300,
+      });
+
+      // 2. Main Body (Ice Crystal Shape - Diamond/Rhombus)
+      const crystal = this.add.graphics();
+      crystal.fillStyle(0xccffff, 0.9); // Pale Ice Blue
+      crystal.lineStyle(2, 0xffffff);
+
+      // Draw a diamond shape
+      const halfSize = size / 2;
+      crystal.beginPath();
+      crystal.moveTo(0, -halfSize - 10); // Top tip (sharp)
+      crystal.lineTo(halfSize, 0);
+      crystal.lineTo(0, halfSize + 10); // Bottom tip
+      crystal.lineTo(-halfSize, 0);
+      crystal.closePath();
+      crystal.fillPath();
+      crystal.strokePath();
+
+      // 3. Inner Core (Bright White)
+      const core = this.add.circle(0, 0, size / 4, 0xffffff);
+
+      // Rotate the container to match velocity direction in update loop?
+      // Actually, we can just rotate the container 90 degrees initially if it points up,
+      // but the bubble rotation logic in update() might interfere.
+      // For now, let's make it a spinning crystal.
+
+      container.add([glow, crystal, core]);
     }
   }
 }

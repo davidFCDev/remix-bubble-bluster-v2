@@ -29,6 +29,7 @@ export const GameSettings = {
     timeBonusDecrease: 50,
     baseShotsPerCeilingDrop: 10,
     speechBubbleDuration: 2000,
+    levelTime: 120, // Seconds per level
   },
   characters: [
     {
@@ -60,7 +61,7 @@ export const GameSettings = {
       name: "Whitey",
       lore: "A snowy guardian from the Clouded Peaks.",
       skillDesc:
-        "Color Pick: 3 white shots that adapt to ANY color and eliminate connected groups (no 3-match limit)",
+        "Ice Lance: A piercing shot that destroys everything in a straight line. Does NOT bounce off walls.",
       hasSkill: true,
       spriteIdle:
         "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/Owlet_Monster_Idle_4-2kKOi58HJNlpwUnj7rBlclsjnnWU4P.png?GA7n",
@@ -84,6 +85,20 @@ export const GameSettings = {
       "https://remix.gg/blob/Y58Z5vSLnB41/Music3-QBaMUSI9yutKOPkke24B5l6QDy4QsX.mp3?CFTD",
       "https://remix.gg/blob/Y58Z5vSLnB41/Music4-YpVGcgTNTTVqvAgBtw0XgAyWLJO6RS.mp3?WOuM",
     ],
+    sfx: {
+      pop: "https://remix.gg/blob/Y58Z5vSLnB41/pop-hZzRjL6dDiVol4H7UGr8PXqfQgptw2.mp3?VJDr",
+      button:
+        "https://remix.gg/blob/Y58Z5vSLnB41/button-P4BpyTVumUTlBwKU6HKjifmqXHyVDT.mp3?DKvz",
+      skill:
+        "https://remix.gg/blob/Y58Z5vSLnB41/skill-tXdETS9gksWtrAnbrxMUPME9FbNU8u.mp3?A634",
+      level_complete:
+        "https://remix.gg/blob/Y58Z5vSLnB41/success-AW3cXCtRKCkTE07nZXOFjdtjCoMHCh.mp3?uqct",
+      // shoot: "path/to/shoot.mp3",
+      // special_pinky: "path/to/pinky.mp3",
+      // special_bluey: "path/to/bluey.mp3",
+      // special_whitey: "path/to/whitey.mp3",
+      // game_over: "path/to/game_over.mp3",
+    },
   },
 };
 

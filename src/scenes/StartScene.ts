@@ -26,6 +26,19 @@ export class StartScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setShadow(0, 6, "#000000", 10, true, true);
 
+    // Subtitle "RELOADED"
+    this.add
+      .text(width / 2, height * 0.25 + 160, "RELOADED", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "48px",
+        color: "#FFFFFF",
+        fontStyle: "italic",
+        stroke: "#000000",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setShadow(0, 4, "#000000", 6, true, true);
+
     // Start Button
     const btnWidth = 320; // Slightly wider
     const btnHeight = 80;
@@ -80,6 +93,7 @@ export class StartScene extends Phaser.Scene {
     });
 
     startBtnContainer.on("pointerdown", () => {
+      this.sound.play("sfx_button");
       this.scene.start("CharacterSelectScene");
     });
 

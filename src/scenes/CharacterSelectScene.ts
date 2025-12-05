@@ -169,6 +169,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.selectBtn.add([btnBg, btnText]);
 
     this.selectBtn.on("pointerdown", () => {
+      this.sound.play("sfx_button");
       this.selectCharacter();
     });
 
@@ -204,8 +205,14 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    prevBtn.on("pointerdown", () => this.changeCharacter(-1));
-    nextBtn.on("pointerdown", () => this.changeCharacter(1));
+    prevBtn.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.changeCharacter(-1);
+    });
+    nextBtn.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.changeCharacter(1);
+    });
 
     // Initial Update
     this.updateCharacterDisplay();
