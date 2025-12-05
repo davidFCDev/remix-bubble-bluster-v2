@@ -393,8 +393,12 @@ export class GameScene extends Phaser.Scene {
       for (let col = 0; col < numBubbles; col++) {
         let color;
         // 5% chance for Stone, but NEVER on row 0 (ceiling)
-        if (row > 0 && Math.random() < 0.05) {
-          color = "STONE";
+        // if (row > 0 && Math.random() < 0.05) {
+        //   color = "STONE";
+        // } else
+        if (row > 0 && Math.random() < 0.1) {
+          // 10% chance for Anchor (Increased for testing)
+          color = "ANCHOR";
         } else {
           color =
             GameSettings.colors.all[
@@ -521,6 +525,55 @@ export class GameScene extends Phaser.Scene {
       );
 
       container.add([circle, graphics, shine]);
+      return container;
+    } else if (color === "ANCHOR") {
+      // Anchor Visual: Metallic Orange / Copper
+      const circle = this.add.circle(0, 0, size / 2 - 2, 0xd35400); // Rust Orange
+      circle.setStrokeStyle(2, 0xff8c00); // Dark Orange border
+
+      // Rivets (Darker Brown)
+      const rivets = this.add.graphics();
+      rivets.fillStyle(0x6e2c00, 1); // Very Dark Orange/Brown
+      rivets.fillCircle(-size / 3, 0, 2);
+      rivets.fillCircle(size / 3, 0, 2);
+      rivets.fillCircle(0, -size / 3, 2);
+      rivets.fillCircle(0, size / 3, 2);
+
+      // Anchor Symbol (Light Orange/Cream)
+      const anchor = this.add.graphics();
+      anchor.lineStyle(3, 0xffe0b2, 1); // Light Orange/Cream
+
+      // Vertical line
+      anchor.beginPath();
+      anchor.moveTo(0, -size / 4);
+      anchor.lineTo(0, size / 4);
+      anchor.strokePath();
+
+      // Crossbar
+      anchor.beginPath();
+      anchor.moveTo(-size / 6, -size / 6);
+      anchor.lineTo(size / 6, -size / 6);
+      anchor.strokePath();
+
+      // Bottom Curve
+      anchor.beginPath();
+      anchor.arc(0, 0, size / 4, 0.1 * Math.PI, 0.9 * Math.PI, false);
+      anchor.strokePath();
+
+      // Ring at top
+      anchor.lineStyle(2, 0xffe0b2, 1);
+      anchor.strokeCircle(0, -size / 4 - 3, 3);
+
+      // Shine
+      const shine = this.add.circle(
+        -size / 6,
+        -size / 6,
+        size / 8,
+        0xffffff,
+        0.4
+      );
+
+      container.add([circle, rivets, anchor, shine]);
       return container;
     }
 
@@ -905,6 +958,16 @@ export class GameScene extends Phaser.Scene {
         if (bubble.isIceLance) {
           // Ice Lance destroys the bubble and continues
           const color = this.grid[pos.row][pos.col]!;
+
+          // Anchor is immune to Ice Lance
+          if (color === "ANCHOR") {
+            // Lance breaks on Anchor
+            if (bubble.sprite) bubble.sprite.destroy();
+            this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
+            this.flyingBubbles.splice(i, 1);
+            continue;
+          }
+
           this.grid[pos.row][pos.col] = null;
           if (this.bubbleSprites[pos.row][pos.col]) {
             const sprite = this.bubbleSprites[pos.row][pos.col]!;
@@ -947,6 +1010,17 @@ export class GameScene extends Phaser.Scene {
               if (bubble.isIceLance) {
                 // Ice Lance destroys the bubble and continues
                 const color = this.grid[r][c]!;
+
+                // Anchor is immune to Ice Lance
+                if (color === "ANCHOR") {
+                  // Lance breaks on Anchor
+                  if (bubble.sprite) bubble.sprite.destroy();
+                  this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
+                  this.flyingBubbles.splice(i, 1);
+                  collided = true;
+                  break;
+                }
+
                 this.grid[r][c] = null;
                 if (this.bubbleSprites[r][c]) {
                   const sprite = this.bubbleSprites[r][c]!;
@@ -1102,14 +1176,17 @@ export class GameScene extends Phaser.Scene {
         const neighbors = this.getNeighbors(pos.row, pos.col);
         neighbors.forEach((n) => {
           if (this.grid[n.r][n.c]) {
-            const color = this.grid[n.r][n.c]!;
+            const val = this.grid[n.r][n.c]!;
+            // Anchor is immune to Bomb
+            if (val === "ANCHOR") return;
+
             this.grid[n.r][n.c] = null;
             if (this.bubbleSprites[n.r][n.c]) {
               const sprite = this.bubbleSprites[n.r][n.c]!;
               this.playPopAnimation(
                 sprite.x + this.gameContainer.x,
                 sprite.y + this.gameContainer.y,
-                color
+                val
               );
               sprite.destroy();
               this.bubbleSprites[n.r][n.c] = null;
@@ -1119,14 +1196,17 @@ export class GameScene extends Phaser.Scene {
           const secondNeighbors = this.getNeighbors(n.r, n.c);
           secondNeighbors.forEach((sn) => {
             if (this.grid[sn.r][sn.c]) {
-              const color = this.grid[sn.r][sn.c]!;
+              const val = this.grid[sn.r][sn.c]!;
+              // Anchor is immune to Bomb
+              if (val === "ANCHOR") return;
+
               this.grid[sn.r][sn.c] = null;
               if (this.bubbleSprites[sn.r][sn.c]) {
                 const sprite = this.bubbleSprites[sn.r][sn.c]!;
                 this.playPopAnimation(
                   sprite.x + this.gameContainer.x,
                   sprite.y + this.gameContainer.y,
-                  color
+                  val
                 );
                 sprite.destroy();
                 this.bubbleSprites[sn.r][sn.c] = null;
@@ -1179,21 +1259,25 @@ export class GameScene extends Phaser.Scene {
 
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
-          // Destroy all bubbles of this specific color
-          for (let r = 0; r < this.GRID_HEIGHT; r++) {
-            const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
-            for (let c = 0; c < maxCols; c++) {
-              if (this.grid[r][c] === targetColor) {
-                this.grid[r][c] = null;
-                if (this.bubbleSprites[r][c]) {
-                  const sprite = this.bubbleSprites[r][c]!;
-                  this.playPopAnimation(
-                    sprite.x + this.gameContainer.x,
-                    sprite.y + this.gameContainer.y,
-                    targetColor
-                  );
-                  sprite.destroy();
-                  this.bubbleSprites[r][c] = null;
+          // Anchor is immune to Color Blast (Pinky)
+          if (targetColor !== "ANCHOR") {
+            // Destroy all bubbles of this specific color
+            for (let r = 0; r < this.GRID_HEIGHT; r++) {
+              const maxCols =
+                r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+              for (let c = 0; c < maxCols; c++) {
+                if (this.grid[r][c] === targetColor) {
+                  this.grid[r][c] = null;
+                  if (this.bubbleSprites[r][c]) {
+                    const sprite = this.bubbleSprites[r][c]!;
+                    this.playPopAnimation(
+                      sprite.x + this.gameContainer.x,
+                      sprite.y + this.gameContainer.y,
+                      targetColor
+                    );
+                    sprite.destroy();
+                    this.bubbleSprites[r][c] = null;
+                  }
                 }
               }
             }
@@ -1440,10 +1524,16 @@ export class GameScene extends Phaser.Scene {
     const connected = new Set<string>();
     const queue = [];
 
-    // Start from top row
-    for (let c = 0; c < this.GRID_WIDTH; c++) {
-      if (this.grid[0][c]) {
-        queue.push({ r: 0, c });
+    // Start from top row AND Anchors
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        if (r === 0 && this.grid[r][c]) {
+          queue.push({ r, c });
+        } else if (this.grid[r][c] === "ANCHOR") {
+          // Anchors act as roots too
+          queue.push({ r, c });
+        }
       }
     }
 
@@ -1482,6 +1572,42 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    // Check for Isolated Anchors (Anchors with no neighbors)
+    // We do this AFTER removing floating bubbles, because an anchor might have lost its neighbors just now.
+    let anchorDestroyed = false;
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        if (this.grid[r][c] === "ANCHOR") {
+          const neighbors = this.getNeighbors(r, c);
+          const hasNeighbors = neighbors.some((n) => this.grid[n.r][n.c]);
+          if (!hasNeighbors) {
+            // Destroy isolated anchor
+            this.grid[r][c] = null;
+            if (this.bubbleSprites[r][c]) {
+              const sprite = this.bubbleSprites[r][c]!;
+              this.playPopAnimation(
+                sprite.x + this.gameContainer.x,
+                sprite.y + this.gameContainer.y,
+                "ANCHOR"
+              );
+              sprite.destroy();
+              this.bubbleSprites[r][c] = null;
+            }
+            anchorDestroyed = true;
+          }
+        }
+      }
+    }
+
+    // If we destroyed an anchor, we might have created new floating bubbles (if that anchor was holding them)
+    // So we should recurse, but be careful of infinite loops.
+    // Actually, if an anchor was holding something, it had neighbors.
+    // If it had neighbors, it wouldn't be destroyed here.
+    // It is only destroyed if it has NO neighbors.
+    // So destroying it won't cause anything else to fall.
+    // Safe.
 
     if (this.checkLevelComplete()) {
       this.gameStarted = false;
@@ -1584,6 +1710,8 @@ export class GameScene extends Phaser.Scene {
     let particleColor = 0xffffff;
     if (color === "STONE") {
       particleColor = 0x555555; // Grey particles for stone
+    } else if (color === "ANCHOR") {
+      particleColor = 0xff8c00; // Orange particles for anchor
     } else {
       particleColor = Phaser.Display.Color.HexStringToColor(color).color;
     }
