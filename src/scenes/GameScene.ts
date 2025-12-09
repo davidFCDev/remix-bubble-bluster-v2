@@ -542,8 +542,9 @@ export class GameScene extends Phaser.Scene {
     }
     // If we already have 2 of this color in queue, pick a different one
     if (consecutiveCount >= 2) {
-      const otherColors = GameSettings.colors.all.filter(c => c !== newColor);
-      newColor = otherColors[Math.floor(Math.random() * otherColors.length)] || newColor;
+      const otherColors = GameSettings.colors.all.filter((c) => c !== newColor);
+      newColor =
+        otherColors[Math.floor(Math.random() * otherColors.length)] || newColor;
     }
     this.nextBubbles.push(newColor);
 
@@ -927,10 +928,7 @@ export class GameScene extends Phaser.Scene {
                 const color = this.grid[r][c]!;
 
                 // Anchor and Slime are immune to Ice Lance (Prism lets it pass)
-                if (
-                  color === "ANCHOR" ||
-                  color === "SLIME"
-                ) {
+                if (color === "ANCHOR" || color === "SLIME") {
                   // Lance breaks on Anchor or Slime
                   if (bubble.sprite) bubble.sprite.destroy();
                   this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
@@ -1149,8 +1147,7 @@ export class GameScene extends Phaser.Scene {
             if (this.grid[sn.r][sn.c]) {
               const val = this.grid[sn.r][sn.c]!;
               // Anchor and Slime are immune to Bomb (Prism is destroyed)
-              if (val === "ANCHOR" || val === "SLIME")
-                return;
+              if (val === "ANCHOR" || val === "SLIME") return;
 
               this.grid[sn.r][sn.c] = null;
               if (this.bubbleSprites[sn.r][sn.c]) {
@@ -1212,10 +1209,7 @@ export class GameScene extends Phaser.Scene {
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
           // Anchor and Slime are immune to Color Blast (Prism can be targeted)
-          if (
-            targetColor !== "ANCHOR" &&
-            targetColor !== "SLIME"
-          ) {
+          if (targetColor !== "ANCHOR" && targetColor !== "SLIME") {
             // Destroy all bubbles of this specific color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
               const maxCols =
@@ -1263,9 +1257,9 @@ export class GameScene extends Phaser.Scene {
 
     // Check Ceiling Drop
     // Progressive difficulty: Ceiling drops faster as level increases
-    // Base is 10 shots. Decreases by 1 every level. Min 3 shots.
+    // Base is 10 shots. Decreases by 1 every level. Min 5 shots (cap to prevent impossible levels).
     const shotsPerDrop = Math.max(
-      3,
+      5,
       GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1)
     );
 
@@ -1646,8 +1640,11 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
-          // Check if bubble is past the limit line (allow it to visually cross)
-          if (y + this.ceilingOffset + this.GRID_OFFSET_Y > this.LIMIT_LINE_Y + this.BUBBLE_SIZE) {
+          // Check if bubble crosses the limit line (with margin so it visually crosses)
+          if (
+            y + this.ceilingOffset + this.GRID_OFFSET_Y >
+            this.LIMIT_LINE_Y + this.BUBBLE_SIZE / 2
+          ) {
             this.handleGameOver("GAME OVER");
             return;
           }
@@ -1900,8 +1897,8 @@ export class GameScene extends Phaser.Scene {
 
   updateSlime() {
     this.slimeTurnCount++;
-    // Contagion happens every 4 shots
-    if (this.slimeTurnCount % 4 !== 0) return;
+    // Contagion happens every 6 shots (slower spread)
+    if (this.slimeTurnCount % 6 !== 0) return;
 
     const allCandidates: { r: number; c: number }[] = [];
 
@@ -1985,8 +1982,9 @@ export class GameScene extends Phaser.Scene {
   placeSpecialBubble(type: string, initialRows: number): boolean {
     let attempts = 0;
     while (attempts < 100) {
-      // Row > 0 for SLIME and STONE (Stones not on ceiling, not adjacent to other stones)
-      const minRow = (type === "SLIME" || type === "STONE") ? 1 : 0;
+      // Row > 0 for SLIME, STONE, and ANCHOR (not on ceiling)
+      const minRow =
+        type === "SLIME" || type === "STONE" || type === "ANCHOR" ? 1 : 0;
       const r = Phaser.Math.Between(minRow, initialRows - 1);
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       const c = Phaser.Math.Between(0, maxCols - 1);
@@ -1997,13 +1995,15 @@ export class GameScene extends Phaser.Scene {
         // For STONE: Check no adjacent stones
         if (type === "STONE") {
           const neighbors = this.getNeighbors(r, c);
-          const hasAdjacentStone = neighbors.some(n => this.grid[n.r]?.[n.c] === "STONE");
+          const hasAdjacentStone = neighbors.some(
+            (n) => this.grid[n.r]?.[n.c] === "STONE"
+          );
           if (hasAdjacentStone) {
             attempts++;
             continue;
           }
         }
-        
+
         if (this.bubbleSprites[r][c]) this.bubbleSprites[r][c]!.destroy();
 
         // For Chameleon, we need a base color
@@ -2053,8 +2053,8 @@ export class GameScene extends Phaser.Scene {
         break;
 
       case 4:
-        // Ancla: 2-3
-        const numAnchor = Phaser.Math.Between(2, 3);
+        // Ancla: 1-2 (reduced, complex to deal with)
+        const numAnchor = Phaser.Math.Between(1, 2);
         for (let i = 0; i < numAnchor; i++) {
           this.placeSpecialBubble("ANCHOR", initialRows);
         }
@@ -2090,14 +2090,14 @@ export class GameScene extends Phaser.Scene {
         for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
           this.placeSpecialBubble("CHAMELEON", initialRows);
         }
-        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
           this.placeSpecialBubble("ANCHOR", initialRows);
         }
         break;
 
       case 9:
         // Mezcla: Ancla + Slime
-        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
           this.placeSpecialBubble("ANCHOR", initialRows);
         }
         this.placeSpecialBubble("SLIME", initialRows);
