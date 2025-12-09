@@ -451,7 +451,8 @@ export class GameScene extends Phaser.Scene {
       case 4:
         return {
           name: "STOP",
-          description: "Drop it to freeze the ceiling!\nLasts the entire level.",
+          description:
+            "Drop it to freeze the ceiling!\nLasts the entire level.",
         };
       case 5:
         return {
@@ -2367,9 +2368,9 @@ export class GameScene extends Phaser.Scene {
   placeSpecialBubble(type: string, initialRows: number): boolean {
     let attempts = 0;
     while (attempts < 100) {
-      // Row > 0 for SLIME, STONE, and ANCHOR (not on ceiling)
+      // Row > 0 for SLIME, STONE, ANCHOR, and STOP (not on ceiling - must be droppable)
       const minRow =
-        type === "SLIME" || type === "STONE" || type === "ANCHOR" ? 1 : 0;
+        type === "SLIME" || type === "STONE" || type === "ANCHOR" || type === "STOP" ? 1 : 0;
       const r = Phaser.Math.Between(minRow, initialRows - 1);
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       const c = Phaser.Math.Between(0, maxCols - 1);
@@ -2512,7 +2513,7 @@ export class GameScene extends Phaser.Scene {
       default: {
         // Calculate which combination to use (rotating through options)
         const combo = (this.level - 13) % 6;
-        
+
         switch (combo) {
           case 0:
             // STONE + BOMB + PRISM
@@ -2526,7 +2527,7 @@ export class GameScene extends Phaser.Scene {
               this.placeSpecialBubble("PRISM", initialRows);
             }
             break;
-            
+
           case 1:
             // CHAMELEON + ANCHOR + STOP
             for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
@@ -2535,7 +2536,7 @@ export class GameScene extends Phaser.Scene {
             this.placeSpecialBubble("ANCHOR", initialRows);
             this.placeSpecialBubble("STOP", initialRows);
             break;
-            
+
           case 2:
             // SLIME + STONE + BOMB
             this.placeSpecialBubble("SLIME", initialRows);
@@ -2546,7 +2547,7 @@ export class GameScene extends Phaser.Scene {
               this.placeSpecialBubble("BOMB", initialRows);
             }
             break;
-            
+
           case 3:
             // PRISM + CHAMELEON + ANCHOR
             for (let i = 0; i < 2; i++) {
@@ -2557,7 +2558,7 @@ export class GameScene extends Phaser.Scene {
             }
             this.placeSpecialBubble("ANCHOR", initialRows);
             break;
-            
+
           case 4:
             // BOMB + STOP + SLIME
             for (let i = 0; i < 2; i++) {
@@ -2566,7 +2567,7 @@ export class GameScene extends Phaser.Scene {
             this.placeSpecialBubble("STOP", initialRows);
             this.placeSpecialBubble("SLIME", initialRows);
             break;
-            
+
           case 5:
             // STONE + CHAMELEON + PRISM
             for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
