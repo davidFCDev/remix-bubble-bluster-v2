@@ -33,6 +33,7 @@ export class GameScene extends Phaser.Scene {
   private ceilingOffset: number = 0;
   private shotCount: number = 0;
   private slimeTurnCount: number = 0;
+  private chameleonTurnCount: number = 0;
   private gameOver: boolean = false;
   private gameStarted: boolean = false;
   private selectedCharacter: any = null;
@@ -83,6 +84,7 @@ export class GameScene extends Phaser.Scene {
     this.ceilingOffset = 0;
     this.shotCount = 0;
     this.slimeTurnCount = 0;
+    this.chameleonTurnCount = 0;
     this.abilityAvailable = true;
     this.whiteyWildShotsLeft = 0;
     this.launcherAngle = Math.PI / 2;
@@ -419,32 +421,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   // Get tutorial text for new bubble types introduced in each level
-  getNewBubbleInfo(level: number): { name: string; description: string } | null {
+  getNewBubbleInfo(
+    level: number
+  ): { name: string; description: string } | null {
     switch (level) {
       case 1:
         return {
           name: "PRISM",
-          description: "Universal wildcard.\nMatches with any color!"
+          description: "Universal wildcard.\nMatches with any color!",
         };
       case 2:
         return {
           name: "STONE",
-          description: "Solid obstacle.\nOnly falls if you break its support."
+          description: "Solid obstacle.\nOnly falls if you break its support.",
         };
       case 3:
         return {
           name: "CHAMELEON",
-          description: "Changes color each turn.\nShoot when it matches!"
+          description: "Changes color each turn.\nShoot when it matches!",
         };
       case 4:
         return {
           name: "ANCHOR",
-          description: "Immune to abilities.\nOnly falls by dropping it."
+          description: "Immune to abilities.\nOnly falls by dropping it.",
         };
       case 5:
         return {
           name: "SLIME",
-          description: "Infects neighbors every 6 turns.\nShoot it to cure!"
+          description: "Infects neighbors every 6 turns.\nShoot it to cure!",
         };
       default:
         return null;
@@ -463,7 +467,7 @@ export class GameScene extends Phaser.Scene {
       0x000000,
       0.85
     );
-    
+
     const levelText = this.add
       .text(width / 2, height / 2 - 60, `LEVEL ${level}`, {
         fontFamily: "Pixelify Sans",
@@ -478,15 +482,15 @@ export class GameScene extends Phaser.Scene {
 
     // Check if this level introduces a new bubble type
     const bubbleInfo = this.getNewBubbleInfo(level);
-    
+
     let bubbleNameText: Phaser.GameObjects.Text | null = null;
     let bubbleDescText: Phaser.GameObjects.Text | null = null;
-    
+
     if (bubbleInfo) {
       bubbleNameText = this.add
-        .text(width / 2, height / 2 + 40, bubbleInfo.name, {
+        .text(width / 2, height / 2 + 50, bubbleInfo.name, {
           fontFamily: "Pixelify Sans",
-          fontSize: "36px",
+          fontSize: "48px",
           color: "#FFFFFF",
           fontStyle: "bold",
         })
@@ -494,9 +498,9 @@ export class GameScene extends Phaser.Scene {
         .setAlpha(0);
 
       bubbleDescText = this.add
-        .text(width / 2, height / 2 + 100, bubbleInfo.description, {
+        .text(width / 2, height / 2 + 120, bubbleInfo.description, {
           fontFamily: "Pixelify Sans",
-          fontSize: "24px",
+          fontSize: "32px",
           color: "#CCCCCC",
           align: "center",
         })
@@ -1361,16 +1365,32 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateChameleons() {
+    this.chameleonTurnCount++;
+    // Chameleons change color every 2 shots
+    if (this.chameleonTurnCount % 2 !== 0) return;
+
     for (let r = 0; r < this.GRID_HEIGHT; r++) {
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       for (let c = 0; c < maxCols; c++) {
         const val = this.grid[r][c];
         if (val && val.startsWith("CHAMELEON:")) {
-          // Pick new random color
+          // Get neighbor colors (only standard colors that are in contact)
+          const neighbors = this.getNeighbors(r, c);
+          const neighborColors: string[] = [];
+
+          for (const n of neighbors) {
+            const nVal = this.grid[n.r]?.[n.c];
+            if (nVal && nVal.startsWith("#")) {
+              neighborColors.push(nVal);
+            }
+          }
+
+          // If no neighbor colors, keep current color
+          if (neighborColors.length === 0) continue;
+
+          // Pick random color from neighbors
           const newColor =
-            GameSettings.colors.all[
-              Math.floor(Math.random() * GameSettings.colors.all.length)
-            ];
+            neighborColors[Math.floor(Math.random() * neighborColors.length)];
           this.grid[r][c] = `CHAMELEON:${newColor}`;
 
           // Update Visual
