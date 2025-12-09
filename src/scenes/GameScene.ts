@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private score: number = 0;
   private level: number = 1;
   private ceilingOffset: number = 0;
+  private ceilingFrozen: boolean = false;
   private shotCount: number = 0;
   private slimeTurnCount: number = 0;
   private chameleonTurnCount: number = 0;
@@ -82,6 +83,7 @@ export class GameScene extends Phaser.Scene {
     this.gameOver = false;
     this.gameStarted = false;
     this.ceilingOffset = 0;
+    this.ceilingFrozen = false;
     this.shotCount = 0;
     this.slimeTurnCount = 0;
     this.chameleonTurnCount = 0;
@@ -338,6 +340,7 @@ export class GameScene extends Phaser.Scene {
 
     // Reset Ceiling
     this.ceilingOffset = 0;
+    this.ceilingFrozen = false; // Reset ceiling frozen state each level
     this.gameContainer.y = this.GRID_OFFSET_Y;
     this.drawCeiling(); // Force redraw immediately to avoid visual glitch during transition
 
@@ -427,8 +430,8 @@ export class GameScene extends Phaser.Scene {
     switch (level) {
       case 1:
         return {
-          name: "PRISM",
-          description: "Universal wildcard.\nMatches with any color!",
+          name: "STOP + PRISM",
+          description: "STOP: Drop it to freeze the ceiling!\nPRISM: Universal wildcard, matches any color.",
         };
       case 2:
         return {
@@ -962,8 +965,8 @@ export class GameScene extends Phaser.Scene {
           // Ice Lance destroys the bubble and continues
           const color = this.grid[pos.row][pos.col]!;
 
-          // Anchor and Slime are immune to Ice Lance (Prism lets it pass through)
-          if (color === "ANCHOR" || color === "SLIME") {
+          // Anchor, Slime and Stop are immune to Ice Lance (Prism lets it pass through)
+          if (color === "ANCHOR" || color === "SLIME" || color === "STOP") {
             // Lance breaks on Anchor or Slime
             if (bubble.sprite) bubble.sprite.destroy();
             this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
@@ -1014,8 +1017,8 @@ export class GameScene extends Phaser.Scene {
                 // Ice Lance destroys the bubble and continues
                 const color = this.grid[r][c]!;
 
-                // Anchor and Slime are immune to Ice Lance (Prism lets it pass)
-                if (color === "ANCHOR" || color === "SLIME") {
+                // Anchor, Slime and Stop are immune to Ice Lance (Prism lets it pass)
+                if (color === "ANCHOR" || color === "SLIME" || color === "STOP") {
                   // Lance breaks on Anchor or Slime
                   if (bubble.sprite) bubble.sprite.destroy();
                   this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
@@ -1213,8 +1216,8 @@ export class GameScene extends Phaser.Scene {
         neighbors.forEach((n) => {
           if (this.grid[n.r][n.c]) {
             const val = this.grid[n.r][n.c]!;
-            // Anchor and Slime are immune to Bomb (Prism is destroyed)
-            if (val === "ANCHOR" || val === "SLIME") return;
+            // Anchor, Slime and Stop are immune to Bomb (Prism is destroyed)
+            if (val === "ANCHOR" || val === "SLIME" || val === "STOP") return;
 
             this.grid[n.r][n.c] = null;
             if (this.bubbleSprites[n.r][n.c]) {
@@ -1233,8 +1236,8 @@ export class GameScene extends Phaser.Scene {
           secondNeighbors.forEach((sn) => {
             if (this.grid[sn.r][sn.c]) {
               const val = this.grid[sn.r][sn.c]!;
-              // Anchor and Slime are immune to Bomb (Prism is destroyed)
-              if (val === "ANCHOR" || val === "SLIME") return;
+              // Anchor, Slime and Stop are immune to Bomb (Prism is destroyed)
+              if (val === "ANCHOR" || val === "SLIME" || val === "STOP") return;
 
               this.grid[sn.r][sn.c] = null;
               if (this.bubbleSprites[sn.r][sn.c]) {
@@ -1295,8 +1298,8 @@ export class GameScene extends Phaser.Scene {
 
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
-          // Anchor and Slime are immune to Color Blast (Prism can be targeted)
-          if (targetColor !== "ANCHOR" && targetColor !== "SLIME") {
+          // Anchor, Slime and Stop are immune to Color Blast (Prism can be targeted)
+          if (targetColor !== "ANCHOR" && targetColor !== "SLIME" && targetColor !== "STOP") {
             // Destroy all bubbles of this specific color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
               const maxCols =
@@ -1342,17 +1345,19 @@ export class GameScene extends Phaser.Scene {
       bubble.sprite.destroy();
     }
 
-    // Check Ceiling Drop
+    // Check Ceiling Drop (only if ceiling is not frozen)
     // Progressive difficulty: Ceiling drops faster as level increases
     // Base is 10 shots. Decreases by 1 every level. Min 5 shots (cap to prevent impossible levels).
-    const shotsPerDrop = Math.max(
-      5,
-      GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1)
-    );
+    if (!this.ceilingFrozen) {
+      const shotsPerDrop = Math.max(
+        5,
+        GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1)
+      );
 
-    if (this.shotCount >= shotsPerDrop) {
-      this.lowerCeiling();
-      this.shotCount = 0;
+      if (this.shotCount >= shotsPerDrop) {
+        this.lowerCeiling();
+        this.shotCount = 0;
+      }
     }
 
     // Update Chameleons
@@ -1671,6 +1676,13 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c] && !connected.has(`${r},${c}`)) {
           const color = this.grid[r][c]!;
+          
+          // Check if STOP bubble is falling - freeze ceiling for entire level
+          if (color === "STOP") {
+            this.ceilingFrozen = true;
+            this.showFreezeEffect();
+          }
+          
           this.grid[r][c] = null;
           if (this.bubbleSprites[r][c]) {
             const sprite = this.bubbleSprites[r][c]!;
@@ -1735,6 +1747,46 @@ export class GameScene extends Phaser.Scene {
 
   lowerCeiling() {
     this.ceilingOffset += (this.BUBBLE_SIZE * Math.sqrt(3)) / 2;
+  }
+
+  showFreezeEffect() {
+    // Visual feedback when ceiling is frozen
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    // Flash effect
+    const flash = this.add.rectangle(width / 2, height / 2, width, height, 0x87ceeb, 0.4);
+    flash.setDepth(50);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 600,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Freeze text
+    const freezeText = this.add.text(width / 2, height / 3, "CEILING FROZEN!", {
+      fontSize: "36px",
+      color: "#87ceeb",
+      fontFamily: "Pixelify Sans",
+      fontStyle: "bold",
+      stroke: "#ffffff",
+      strokeThickness: 4,
+    });
+    freezeText.setOrigin(0.5);
+    freezeText.setDepth(51);
+
+    this.tweens.add({
+      targets: freezeText,
+      y: height / 3 - 30,
+      alpha: 0,
+      duration: 1500,
+      ease: "Power2",
+      onComplete: () => freezeText.destroy(),
+    });
+
+    // Play a sound if available
+    this.playSound("sfx_pop"); // Reuse existing sound
   }
 
   checkGameOver() {
@@ -2132,7 +2184,8 @@ export class GameScene extends Phaser.Scene {
   placeSpecialBubblesForLevel(initialRows: number) {
     switch (this.level) {
       case 1:
-        // Prisma: 2-4
+        // Stop: 1 (freezes ceiling when dropped) + Prisma: 2-4
+        this.placeSpecialBubble("STOP", initialRows);
         const numPrism = Phaser.Math.Between(2, 4);
         for (let i = 0; i < numPrism; i++) {
           this.placeSpecialBubble("PRISM", initialRows);

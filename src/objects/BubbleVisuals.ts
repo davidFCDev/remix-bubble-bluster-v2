@@ -127,6 +127,67 @@ export class BubbleVisuals {
 
       prismGraphics.generateTexture("prism_texture", 64, 64);
     }
+
+    // Generate Stop Texture (Ice/Freeze Effect)
+    if (!scene.textures.exists("stop_texture")) {
+      const stopGraphics = scene.make.graphics({ x: 0, y: 0 });
+      
+      // Base icy sphere
+      stopGraphics.fillStyle(0x87ceeb, 1); // Light sky blue
+      stopGraphics.fillCircle(32, 32, 28);
+      
+      // Frost overlay
+      stopGraphics.fillStyle(0xb0e0e6, 0.6); // Powder blue
+      stopGraphics.fillCircle(28, 28, 20);
+      
+      // Ice crystals pattern
+      stopGraphics.lineStyle(2, 0xffffff, 0.8);
+      // Snowflake arms
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3;
+        const x1 = 32 + Math.cos(angle) * 8;
+        const y1 = 32 + Math.sin(angle) * 8;
+        const x2 = 32 + Math.cos(angle) * 22;
+        const y2 = 32 + Math.sin(angle) * 22;
+        stopGraphics.beginPath();
+        stopGraphics.moveTo(x1, y1);
+        stopGraphics.lineTo(x2, y2);
+        stopGraphics.strokePath();
+        
+        // Small branches
+        const midX = 32 + Math.cos(angle) * 16;
+        const midY = 32 + Math.sin(angle) * 16;
+        const branchAngle1 = angle + Math.PI / 6;
+        const branchAngle2 = angle - Math.PI / 6;
+        stopGraphics.beginPath();
+        stopGraphics.moveTo(midX, midY);
+        stopGraphics.lineTo(midX + Math.cos(branchAngle1) * 5, midY + Math.sin(branchAngle1) * 5);
+        stopGraphics.moveTo(midX, midY);
+        stopGraphics.lineTo(midX + Math.cos(branchAngle2) * 5, midY + Math.sin(branchAngle2) * 5);
+        stopGraphics.strokePath();
+      }
+      
+      // Center hexagon
+      stopGraphics.fillStyle(0xe0ffff, 0.9); // Light cyan
+      stopGraphics.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3 - Math.PI / 6;
+        const x = 32 + Math.cos(angle) * 7;
+        const y = 32 + Math.sin(angle) * 7;
+        if (i === 0) stopGraphics.moveTo(x, y);
+        else stopGraphics.lineTo(x, y);
+      }
+      stopGraphics.closePath();
+      stopGraphics.fillPath();
+      
+      // Sparkle highlights
+      stopGraphics.fillStyle(0xffffff, 0.9);
+      stopGraphics.fillCircle(22, 18, 3);
+      stopGraphics.fillCircle(40, 24, 2);
+      stopGraphics.fillCircle(26, 42, 2);
+      
+      stopGraphics.generateTexture("stop_texture", 64, 64);
+    }
   }
 
   static create(
@@ -361,6 +422,66 @@ export class BubbleVisuals {
       });
 
       container.add([glow, prism, sparkle]);
+      return container;
+    } else if (color === "STOP") {
+      // Stop Visual: Frozen Ice Sphere
+
+      // 1. Frost Mist (Outer Glow)
+      const mist = scene.add.circle(0, 0, size / 2 + 6, 0x87ceeb, 0.25);
+      scene.tweens.add({
+        targets: mist,
+        alpha: { from: 0.25, to: 0.1 },
+        scale: { from: 1, to: 1.15 },
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // 2. Base Frozen Texture
+      const stopBubble = scene.add.image(0, 0, "stop_texture");
+      stopBubble.setDisplaySize(size, size);
+
+      // 3. Icy Border
+      const border = scene.add.graphics();
+      border.lineStyle(3, 0xe0ffff, 0.9);
+      border.strokeCircle(0, 0, size / 2 - 1.5);
+
+      // 4. Frost Particles (Floating ice crystals)
+      const frost1 = scene.add.star(-size / 4, -size / 4, 6, 1, 3, 0xffffff, 0.8);
+      const frost2 = scene.add.star(size / 4, size / 5, 6, 1, 2, 0xffffff, 0.6);
+      const frost3 = scene.add.star(-size / 5, size / 4, 6, 1, 2, 0xe0ffff, 0.7);
+
+      // Animate frost particles
+      scene.tweens.add({
+        targets: [frost1, frost2, frost3],
+        alpha: { from: 0.8, to: 0.2 },
+        scale: { from: 1, to: 1.3 },
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // 5. Rotating snowflake overlay
+      const snowflakeOverlay = scene.add.graphics();
+      snowflakeOverlay.lineStyle(1.5, 0xffffff, 0.5);
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3;
+        snowflakeOverlay.beginPath();
+        snowflakeOverlay.moveTo(0, 0);
+        snowflakeOverlay.lineTo(Math.cos(angle) * (size / 3), Math.sin(angle) * (size / 3));
+        snowflakeOverlay.strokePath();
+      }
+      scene.tweens.add({
+        targets: snowflakeOverlay,
+        angle: 60,
+        duration: 5000,
+        repeat: -1,
+        ease: "Linear",
+      });
+
+      container.add([mist, stopBubble, border, snowflakeOverlay, frost1, frost2, frost3]);
       return container;
     }
 
