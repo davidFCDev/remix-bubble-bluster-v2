@@ -435,25 +435,35 @@ export class GameScene extends Phaser.Scene {
     switch (level) {
       case 1:
         return {
+          name: "PRISM",
+          description: "Universal wildcard.\nMatches with any color!",
+        };
+      case 2:
+        return {
           name: "BOMB",
           description: "Explodes on contact!\nDestroys all adjacent bubbles.",
         };
-      case 2:
+      case 3:
         return {
           name: "STONE",
           description: "Solid obstacle.\nOnly falls if you break its support.",
         };
-      case 3:
+      case 4:
+        return {
+          name: "STOP",
+          description: "Drop it to freeze the ceiling!\nLasts the entire level.",
+        };
+      case 5:
         return {
           name: "CHAMELEON",
-          description: "Changes color each turn.\nShoot when it matches!",
+          description: "Changes color every 2 turns.\nOnly to neighbor colors!",
         };
-      case 4:
+      case 6:
         return {
           name: "ANCHOR",
           description: "Immune to abilities.\nOnly falls by dropping it.",
         };
-      case 5:
+      case 7:
         return {
           name: "SLIME",
           description: "Infects neighbors every 6 turns.\nShoot it to cure!",
@@ -2402,98 +2412,176 @@ export class GameScene extends Phaser.Scene {
 
   // Level progression logic for special bubbles
   placeSpecialBubblesForLevel(initialRows: number) {
+    // Phase 1: Tutorial (Levels 1-7) - One new bubble type per level
+    // Phase 2: Mix of 2 (Levels 8-12)
+    // Phase 3: Mix of 3 (Levels 13+) - Rotating combinations indefinitely
+
     switch (this.level) {
+      // === PHASE 1: TUTORIAL (1 type each) ===
       case 1:
-        // Bomb: 2-3 (explodes when hit) - Tutorial level for BOMB
-        const numBomb = Phaser.Math.Between(2, 3);
-        for (let i = 0; i < numBomb; i++) {
-          this.placeSpecialBubble("BOMB", initialRows);
+        // PRISM: 2-4
+        for (let i = 0; i < Phaser.Math.Between(2, 4); i++) {
+          this.placeSpecialBubble("PRISM", initialRows);
         }
         break;
 
       case 2:
-        // Piedra: 5-7
-        const numStone = Phaser.Math.Between(5, 7);
-        for (let i = 0; i < numStone; i++) {
-          this.placeSpecialBubble("STONE", initialRows);
+        // BOMB: 2-3
+        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+          this.placeSpecialBubble("BOMB", initialRows);
         }
         break;
 
       case 3:
-        // Camaleón: 5-7
-        const numChameleon = Phaser.Math.Between(5, 7);
-        for (let i = 0; i < numChameleon; i++) {
-          this.placeSpecialBubble("CHAMELEON", initialRows);
+        // STONE: 5-7
+        for (let i = 0; i < Phaser.Math.Between(5, 7); i++) {
+          this.placeSpecialBubble("STONE", initialRows);
         }
         break;
 
       case 4:
-        // Ancla: 1-2 (reduced, complex to deal with)
-        const numAnchor = Phaser.Math.Between(1, 2);
-        for (let i = 0; i < numAnchor; i++) {
-          this.placeSpecialBubble("ANCHOR", initialRows);
-        }
+        // STOP: 1
+        this.placeSpecialBubble("STOP", initialRows);
         break;
 
       case 5:
-        // Slime: 1 sola
-        this.placeSpecialBubble("SLIME", initialRows);
+        // CHAMELEON: 5-7
+        for (let i = 0; i < Phaser.Math.Between(5, 7); i++) {
+          this.placeSpecialBubble("CHAMELEON", initialRows);
+        }
         break;
 
       case 6:
-        // Mezcla: Prisma + Piedra
-        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
-          this.placeSpecialBubble("PRISM", initialRows);
-        }
-        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
-          this.placeSpecialBubble("STONE", initialRows);
+        // ANCHOR: 1-2
+        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
+          this.placeSpecialBubble("ANCHOR", initialRows);
         }
         break;
 
       case 7:
-        // Mezcla: Piedra + Camaleón
-        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
-          this.placeSpecialBubble("STONE", initialRows);
-        }
-        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
-          this.placeSpecialBubble("CHAMELEON", initialRows);
-        }
+        // SLIME: 1
+        this.placeSpecialBubble("SLIME", initialRows);
         break;
 
+      // === PHASE 2: MIX OF 2 ===
       case 8:
-        // Mezcla: Camaleón + Ancla
-        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
-          this.placeSpecialBubble("CHAMELEON", initialRows);
+        // PRISM + BOMB
+        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+          this.placeSpecialBubble("PRISM", initialRows);
         }
-        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
-          this.placeSpecialBubble("ANCHOR", initialRows);
+        for (let i = 0; i < 2; i++) {
+          this.placeSpecialBubble("BOMB", initialRows);
         }
         break;
 
       case 9:
-        // Mezcla: Ancla + Slime
-        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
-          this.placeSpecialBubble("ANCHOR", initialRows);
-        }
-        this.placeSpecialBubble("SLIME", initialRows);
-        break;
-
-      default:
-        // Nivel 10+: Todas mezcladas
-        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
-          this.placeSpecialBubble("PRISM", initialRows);
-        }
-        for (let i = 0; i < Phaser.Math.Between(2, 4); i++) {
+        // STONE + STOP
+        for (let i = 0; i < Phaser.Math.Between(4, 5); i++) {
           this.placeSpecialBubble("STONE", initialRows);
         }
-        for (let i = 0; i < Phaser.Math.Between(2, 4); i++) {
+        this.placeSpecialBubble("STOP", initialRows);
+        break;
+
+      case 10:
+        // CHAMELEON + BOMB
+        for (let i = 0; i < Phaser.Math.Between(4, 5); i++) {
           this.placeSpecialBubble("CHAMELEON", initialRows);
         }
+        for (let i = 0; i < 2; i++) {
+          this.placeSpecialBubble("BOMB", initialRows);
+        }
+        break;
+
+      case 11:
+        // ANCHOR + PRISM
         for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
           this.placeSpecialBubble("ANCHOR", initialRows);
         }
-        this.placeSpecialBubble("SLIME", initialRows);
+        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+          this.placeSpecialBubble("PRISM", initialRows);
+        }
         break;
+
+      case 12:
+        // SLIME + STOP
+        this.placeSpecialBubble("SLIME", initialRows);
+        this.placeSpecialBubble("STOP", initialRows);
+        break;
+
+      // === PHASE 3: MIX OF 3 (Rotating indefinitely) ===
+      default: {
+        // Calculate which combination to use (rotating through options)
+        const combo = (this.level - 13) % 6;
+        
+        switch (combo) {
+          case 0:
+            // STONE + BOMB + PRISM
+            for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
+              this.placeSpecialBubble("STONE", initialRows);
+            }
+            for (let i = 0; i < 2; i++) {
+              this.placeSpecialBubble("BOMB", initialRows);
+            }
+            for (let i = 0; i < 2; i++) {
+              this.placeSpecialBubble("PRISM", initialRows);
+            }
+            break;
+            
+          case 1:
+            // CHAMELEON + ANCHOR + STOP
+            for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
+              this.placeSpecialBubble("CHAMELEON", initialRows);
+            }
+            this.placeSpecialBubble("ANCHOR", initialRows);
+            this.placeSpecialBubble("STOP", initialRows);
+            break;
+            
+          case 2:
+            // SLIME + STONE + BOMB
+            this.placeSpecialBubble("SLIME", initialRows);
+            for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
+              this.placeSpecialBubble("STONE", initialRows);
+            }
+            for (let i = 0; i < 2; i++) {
+              this.placeSpecialBubble("BOMB", initialRows);
+            }
+            break;
+            
+          case 3:
+            // PRISM + CHAMELEON + ANCHOR
+            for (let i = 0; i < 2; i++) {
+              this.placeSpecialBubble("PRISM", initialRows);
+            }
+            for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
+              this.placeSpecialBubble("CHAMELEON", initialRows);
+            }
+            this.placeSpecialBubble("ANCHOR", initialRows);
+            break;
+            
+          case 4:
+            // BOMB + STOP + SLIME
+            for (let i = 0; i < 2; i++) {
+              this.placeSpecialBubble("BOMB", initialRows);
+            }
+            this.placeSpecialBubble("STOP", initialRows);
+            this.placeSpecialBubble("SLIME", initialRows);
+            break;
+            
+          case 5:
+            // STONE + CHAMELEON + PRISM
+            for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
+              this.placeSpecialBubble("STONE", initialRows);
+            }
+            for (let i = 0; i < Phaser.Math.Between(3, 4); i++) {
+              this.placeSpecialBubble("CHAMELEON", initialRows);
+            }
+            for (let i = 0; i < 2; i++) {
+              this.placeSpecialBubble("PRISM", initialRows);
+            }
+            break;
+        }
+        break;
+      }
     }
   }
 }
