@@ -20,6 +20,7 @@ interface Bubble {
 export class GameScene extends Phaser.Scene {
   private static musicPlaylist: number[] = [];
   private static currentPlaylistIndex: number = 0;
+  private static seenTutorials: Set<number> = new Set(); // Track which tutorials have been shown
 
   private grid: (string | null)[][] = [];
   private bubbleSprites: (Phaser.GameObjects.Arc | null)[][] = [];
@@ -98,6 +99,9 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     this.BUBBLE_SIZE = width / this.GRID_WIDTH;
     this.LIMIT_LINE_Y = height - 200;
+
+    // Load saved game state (tutorials seen)
+    this.loadGameState();
 
     // Background
     this.bgImage = this.add
@@ -513,13 +517,18 @@ export class GameScene extends Phaser.Scene {
 
     overlay.add([bg, levelText]);
 
-    // Check if this level introduces a new bubble type
+    // Check if this level introduces a new bubble type AND if we haven't seen it before
     const bubbleInfo = this.getNewBubbleInfo(level);
+    const showTutorial = bubbleInfo && !GameScene.seenTutorials.has(level);
 
     let bubbleNameText: Phaser.GameObjects.Text | null = null;
     let bubbleDescText: Phaser.GameObjects.Text | null = null;
 
-    if (bubbleInfo) {
+    if (showTutorial && bubbleInfo) {
+      // Mark this tutorial as seen and save state
+      GameScene.seenTutorials.add(level);
+      this.saveGameState();
+
       bubbleNameText = this.add
         .text(width / 2, height / 2 + 50, bubbleInfo.name, {
           fontFamily: "Pixelify Sans",
@@ -701,6 +710,44 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.updateUI();
+  }
+
+  // Load saved game state from SDK
+  private loadGameState() {
+    if (window.FarcadeSDK) {
+      try {
+        // Try to get saved state from localStorage as fallback
+        // The SDK's loadGameState is async, so we use localStorage for immediate access
+        const saved = localStorage.getItem("bubbleBlusterState");
+        if (saved) {
+          const state = JSON.parse(saved);
+          if (state.seenTutorials && Array.isArray(state.seenTutorials)) {
+            GameScene.seenTutorials = new Set(state.seenTutorials);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load game state:", e);
+      }
+    }
+  }
+
+  // Save game state using SDK
+  private saveGameState() {
+    if (window.FarcadeSDK) {
+      const gameState = {
+        seenTutorials: Array.from(GameScene.seenTutorials),
+      };
+
+      // Save to SDK
+      window.FarcadeSDK.singlePlayer.actions.saveGameState({ gameState });
+
+      // Also save to localStorage as backup
+      try {
+        localStorage.setItem("bubbleBlusterState", JSON.stringify(gameState));
+      } catch (e) {
+        console.warn("Failed to save to localStorage:", e);
+      }
+    }
   }
 
   private playSound(key: string, config?: Phaser.Types.Sound.SoundConfig) {
