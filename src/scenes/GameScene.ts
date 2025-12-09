@@ -341,6 +341,7 @@ export class GameScene extends Phaser.Scene {
     // Reset Ceiling
     this.ceilingOffset = 0;
     this.ceilingFrozen = false; // Reset ceiling frozen state each level
+    this.shotCount = 0; // Reset shot count for ceiling drop
     // Remove frost line if it exists
     if ((this as any).frostLineContainer) {
       (this as any).frostLineContainer.destroy();
@@ -1392,10 +1393,10 @@ export class GameScene extends Phaser.Scene {
 
     // Check Ceiling Drop (only if ceiling is not frozen)
     // Progressive difficulty: Ceiling drops faster as level increases
-    // Base is 10 shots. Decreases by 1 every level. Min 5 shots (cap to prevent impossible levels).
+    // Base is 10 shots. Decreases by 1 every level. Min 6 shots (cap to prevent impossible levels).
     if (!this.ceilingFrozen) {
       const shotsPerDrop = Math.max(
-        5,
+        6,
         GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1)
       );
 
@@ -2026,10 +2027,10 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
-          // Check if bubble crosses the limit line (with margin so it visually crosses)
+          // Check if bubble crosses the limit line
           if (
             y + this.ceilingOffset + this.GRID_OFFSET_Y >
-            this.LIMIT_LINE_Y + this.BUBBLE_SIZE / 2
+            this.LIMIT_LINE_Y
           ) {
             this.handleGameOver("GAME OVER");
             return;
@@ -2370,7 +2371,12 @@ export class GameScene extends Phaser.Scene {
     while (attempts < 100) {
       // Row > 0 for SLIME, STONE, ANCHOR, and STOP (not on ceiling - must be droppable)
       const minRow =
-        type === "SLIME" || type === "STONE" || type === "ANCHOR" || type === "STOP" ? 1 : 0;
+        type === "SLIME" ||
+        type === "STONE" ||
+        type === "ANCHOR" ||
+        type === "STOP"
+          ? 1
+          : 0;
       const r = Phaser.Math.Between(minRow, initialRows - 1);
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       const c = Phaser.Math.Between(0, maxCols - 1);
