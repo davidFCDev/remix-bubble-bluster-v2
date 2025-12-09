@@ -66,6 +66,7 @@ export class GameScene extends Phaser.Scene {
   private currentMusic: Phaser.Sound.BaseSound | null = null;
   private skillButtonPressed: boolean = false; // Track if skill button was pressed
   private lastTouchX: number = 0; // Track last touch X position for relative aiming
+  private recentColors: string[] = []; // Track recent bubble colors to prevent 3+ consecutive
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -94,6 +95,7 @@ export class GameScene extends Phaser.Scene {
     this.launcherAngle = Math.PI / 2;
     this.canShoot = true;
     this.levelTime = GameSettings.gameplay.levelTime;
+    this.recentColors = []; // Reset recent colors tracking
   }
 
   create() {
@@ -661,22 +663,53 @@ export class GameScene extends Phaser.Scene {
 
   spawnBubble() {
     const color = this.nextBubbles.shift()!;
-    // Prevent more than 3 consecutive same colors
+
+    // Track this color in recent history
+    this.recentColors.push(color);
+    if (this.recentColors.length > 3) {
+      this.recentColors.shift(); // Keep only last 3
+    }
+
+    // Generate new color for queue, avoiding 3+ consecutive
     let newColor = this.getRandomColor(GameSettings.colors.all);
-    let consecutiveCount = 0;
-    for (let i = this.nextBubbles.length - 1; i >= 0; i--) {
-      if (this.nextBubbles[i] === newColor) {
+
+    // Check consecutive count: current bubble + queue + new color
+    // We need to check if adding newColor would make 3+ in a row
+    const checkSequence = [...this.nextBubbles, newColor];
+    let consecutiveCount = 1;
+
+    for (let i = checkSequence.length - 2; i >= 0; i--) {
+      if (checkSequence[i] === newColor) {
         consecutiveCount++;
       } else {
         break;
       }
     }
-    // If we already have 2 of this color in queue, pick a different one
-    if (consecutiveCount >= 2) {
+
+    // Also check recent colors (what was just shot)
+    if (consecutiveCount < 3 && this.recentColors.length > 0) {
+      const lastRecent = this.recentColors[this.recentColors.length - 1];
+      if (this.nextBubbles.length === 0 && lastRecent === newColor) {
+        // Count consecutive in recent history
+        let recentConsecutive = 0;
+        for (let i = this.recentColors.length - 1; i >= 0; i--) {
+          if (this.recentColors[i] === newColor) {
+            recentConsecutive++;
+          } else {
+            break;
+          }
+        }
+        consecutiveCount = Math.max(consecutiveCount, recentConsecutive + 1);
+      }
+    }
+
+    // If we would have 3+ consecutive, pick a different color
+    if (consecutiveCount >= 3) {
       const otherColors = GameSettings.colors.all.filter((c) => c !== newColor);
       newColor =
         otherColors[Math.floor(Math.random() * otherColors.length)] || newColor;
     }
+
     this.nextBubbles.push(newColor);
 
     const { width, height } = this.cameras.main;
