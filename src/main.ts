@@ -36,6 +36,16 @@ const game = new Phaser.Game(config);
 // Store globally for performance monitoring and HMR cleanup
 (window as any).game = game;
 
+// SDK: Handle play again requests globally
+if (window.FarcadeSDK) {
+  window.FarcadeSDK.on("play_again", () => {
+    // Restart the game from the beginning
+    game.scene.stop("GameScene");
+    game.scene.stop("CharacterSelectScene");
+    game.scene.start("StartScene");
+  });
+}
+
 // Initialize Remix framework after game is created
 game.events.once("ready", () => {
   initRemix(game, {

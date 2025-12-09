@@ -344,11 +344,6 @@ export class PreloadScene extends Phaser.Scene {
     if (window.FarcadeSDK) {
       window.FarcadeSDK.singlePlayer.actions.ready();
 
-      // Handle play again requests from SDK
-      window.FarcadeSDK.on("play_again", () => {
-        this.scene.start("StartScene");
-      });
-
       // Handle mute/unmute from SDK
       window.FarcadeSDK.on("toggle_mute", (data: { isMuted: boolean }) => {
         this.sound.mute = data.isMuted;

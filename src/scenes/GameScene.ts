@@ -65,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private lastBgIndex: number = -1;
   private currentMusic: Phaser.Sound.BaseSound | null = null;
   private skillButtonPressed: boolean = false; // Track if skill button was pressed
+  private lastTouchX: number = 0; // Track last touch X position for relative aiming
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -162,7 +163,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.levelText = this.add
-      .text(width * 0.5, headerY, "Level: 1", fontStyle)
+      .text(width * 0.5, headerY, "L: 1", fontStyle)
       .setOrigin(0.5);
 
     this.timerText = this.add
@@ -207,12 +208,8 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      // Start aiming immediately on touch
-      const { width, height } = this.cameras.main;
-      const launcherX = width / 2;
-      const launcherY = height - 20;
-      const angle = Math.atan2(launcherY - pointer.y, pointer.x - launcherX);
-      this.launcherAngle = Phaser.Math.Clamp(angle, 0.2, Math.PI - 0.2);
+      // Just store the initial touch position, don't move the aimer
+      this.lastTouchX = pointer.x;
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
@@ -220,15 +217,20 @@ export class GameScene extends Phaser.Scene {
       if (!pointer.wasTouch) return;
       if (!this.gameStarted || this.gameOver) return;
 
-      // Update aim while dragging
+      // Update aim while dragging based on relative movement
       if (pointer.isDown) {
-        const { width, height } = this.cameras.main;
-        const launcherX = width / 2;
-        const launcherY = height - 20;
+        // Calculate delta from last position
+        const deltaX = pointer.x - this.lastTouchX;
+        this.lastTouchX = pointer.x;
 
-        // Calculate angle from launcher to pointer
-        const angle = Math.atan2(launcherY - pointer.y, pointer.x - launcherX);
-        this.launcherAngle = Phaser.Math.Clamp(angle, 0.2, Math.PI - 0.2);
+        // Adjust angle based on horizontal movement (sensitivity factor)
+        const sensitivity = 0.005;
+        this.launcherAngle -= deltaX * sensitivity;
+        this.launcherAngle = Phaser.Math.Clamp(
+          this.launcherAngle,
+          0.2,
+          Math.PI - 0.2
+        );
       }
     });
 
@@ -2196,7 +2198,7 @@ export class GameScene extends Phaser.Scene {
 
   updateUI() {
     this.scoreText.setText(`Score: ${this.score}`);
-    this.levelText.setText(`Level: ${this.level}`);
+    this.levelText.setText(`L: ${this.level}`);
     this.timerText.setText(`Time: ${this.levelTime}s`);
     if (this.levelTime <= 10) {
       this.timerText.setColor("#FF0000");
