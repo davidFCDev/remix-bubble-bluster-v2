@@ -341,6 +341,11 @@ export class GameScene extends Phaser.Scene {
     // Reset Ceiling
     this.ceilingOffset = 0;
     this.ceilingFrozen = false; // Reset ceiling frozen state each level
+    // Remove frost line if it exists
+    if ((this as any).frostLineContainer) {
+      (this as any).frostLineContainer.destroy();
+      (this as any).frostLineContainer = null;
+    }
     this.gameContainer.y = this.GRID_OFFSET_Y;
     this.drawCeiling(); // Force redraw immediately to avoid visual glitch during transition
 
@@ -431,7 +436,8 @@ export class GameScene extends Phaser.Scene {
       case 1:
         return {
           name: "STOP + PRISM",
-          description: "STOP: Drop it to freeze the ceiling!\nPRISM: Universal wildcard, matches any color.",
+          description:
+            "STOP: Drop it to freeze the ceiling!\nPRISM: Universal wildcard, matches any color.",
         };
       case 2:
         return {
@@ -1018,7 +1024,11 @@ export class GameScene extends Phaser.Scene {
                 const color = this.grid[r][c]!;
 
                 // Anchor, Slime and Stop are immune to Ice Lance (Prism lets it pass)
-                if (color === "ANCHOR" || color === "SLIME" || color === "STOP") {
+                if (
+                  color === "ANCHOR" ||
+                  color === "SLIME" ||
+                  color === "STOP"
+                ) {
                   // Lance breaks on Anchor or Slime
                   if (bubble.sprite) bubble.sprite.destroy();
                   this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
@@ -1299,7 +1309,11 @@ export class GameScene extends Phaser.Scene {
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
           // Anchor, Slime and Stop are immune to Color Blast (Prism can be targeted)
-          if (targetColor !== "ANCHOR" && targetColor !== "SLIME" && targetColor !== "STOP") {
+          if (
+            targetColor !== "ANCHOR" &&
+            targetColor !== "SLIME" &&
+            targetColor !== "STOP"
+          ) {
             // Destroy all bubbles of this specific color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
               const maxCols =
@@ -1676,13 +1690,13 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c] && !connected.has(`${r},${c}`)) {
           const color = this.grid[r][c]!;
-          
+
           // Check if STOP bubble is falling - freeze ceiling for entire level
           if (color === "STOP") {
             this.ceilingFrozen = true;
             this.showFreezeEffect();
           }
-          
+
           this.grid[r][c] = null;
           if (this.bubbleSprites[r][c]) {
             const sprite = this.bubbleSprites[r][c]!;
@@ -1755,38 +1769,150 @@ export class GameScene extends Phaser.Scene {
     const height = this.cameras.main.height;
 
     // Flash effect
-    const flash = this.add.rectangle(width / 2, height / 2, width, height, 0x87ceeb, 0.4);
+    const flash = this.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x87ceeb,
+      0.5
+    );
     flash.setDepth(50);
     this.tweens.add({
       targets: flash,
       alpha: 0,
-      duration: 600,
+      duration: 800,
       onComplete: () => flash.destroy(),
     });
 
-    // Freeze text
-    const freezeText = this.add.text(width / 2, height / 3, "CEILING FROZEN!", {
-      fontSize: "36px",
-      color: "#87ceeb",
+    // Freeze text - centered, larger, more legible
+    const freezeText = this.add.text(width / 2, height / 2, "CEILING FROZEN!", {
+      fontSize: "52px",
+      color: "#ffffff",
       fontFamily: "Pixelify Sans",
       fontStyle: "bold",
-      stroke: "#ffffff",
-      strokeThickness: 4,
+      stroke: "#0077be",
+      strokeThickness: 8,
+      shadow: {
+        offsetX: 3,
+        offsetY: 3,
+        color: "#004466",
+        blur: 5,
+        fill: true,
+      },
     });
     freezeText.setOrigin(0.5);
     freezeText.setDepth(51);
 
+    // Scale in animation
+    freezeText.setScale(0);
     this.tweens.add({
       targets: freezeText,
-      y: height / 3 - 30,
-      alpha: 0,
-      duration: 1500,
-      ease: "Power2",
-      onComplete: () => freezeText.destroy(),
+      scale: 1,
+      duration: 300,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        // Hold for a moment then fade out
+        this.time.delayedCall(1800, () => {
+          this.tweens.add({
+            targets: freezeText,
+            alpha: 0,
+            scale: 1.2,
+            duration: 500,
+            ease: "Power2",
+            onComplete: () => freezeText.destroy(),
+          });
+        });
+      },
     });
 
+    // Create persistent ice line between ceiling and bubbles
+    this.createFrostLine();
+
     // Play a sound if available
-    this.playSound("sfx_pop"); // Reuse existing sound
+    this.playSound("sfx_pop");
+  }
+
+  createFrostLine() {
+    const width = this.cameras.main.width;
+    const iceLineY = this.GRID_OFFSET_Y + this.ceilingOffset - 10;
+
+    // Container for frost line elements
+    const frostContainer = this.add.container(0, iceLineY);
+    frostContainer.setDepth(15);
+    (this as any).frostLineContainer = frostContainer; // Store reference to destroy on level reset
+
+    // Main ice line
+    const iceLine = this.add.graphics();
+    iceLine.lineStyle(4, 0x87ceeb, 0.9);
+    iceLine.beginPath();
+    iceLine.moveTo(0, 0);
+    iceLine.lineTo(width, 0);
+    iceLine.strokePath();
+
+    // Gradient glow effect
+    const glowLine = this.add.graphics();
+    glowLine.lineStyle(12, 0xadd8e6, 0.3);
+    glowLine.beginPath();
+    glowLine.moveTo(0, 0);
+    glowLine.lineTo(width, 0);
+    glowLine.strokePath();
+
+    frostContainer.add([glowLine, iceLine]);
+
+    // Add icicles
+    const icicleCount = Math.floor(width / 30);
+    for (let i = 0; i < icicleCount; i++) {
+      const x = (i + 0.5) * (width / icicleCount) + Phaser.Math.Between(-5, 5);
+      const icicleHeight = Phaser.Math.Between(8, 18);
+
+      const icicle = this.add.graphics();
+      icicle.fillStyle(0xb0e0e6, 0.8);
+      icicle.beginPath();
+      icicle.moveTo(x - 3, 0);
+      icicle.lineTo(x + 3, 0);
+      icicle.lineTo(x, icicleHeight);
+      icicle.closePath();
+      icicle.fillPath();
+
+      frostContainer.add(icicle);
+    }
+
+    // Add frost particles that float along the line
+    for (let i = 0; i < 8; i++) {
+      const particle = this.add.star(
+        Phaser.Math.Between(20, width - 20),
+        Phaser.Math.Between(-5, 5),
+        6,
+        1,
+        3,
+        0xffffff,
+        0.7
+      );
+      frostContainer.add(particle);
+
+      // Animate particles floating
+      this.tweens.add({
+        targets: particle,
+        x: particle.x + Phaser.Math.Between(-50, 50),
+        alpha: { from: 0.7, to: 0.2 },
+        scale: { from: 1, to: 1.5 },
+        duration: Phaser.Math.Between(1500, 2500),
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Pulsing glow animation on the main line
+    this.tweens.add({
+      targets: glowLine,
+      alpha: { from: 0.3, to: 0.6 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
   }
 
   checkGameOver() {
