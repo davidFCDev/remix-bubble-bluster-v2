@@ -1,4 +1,3 @@
-import * as Phaser from "phaser";
 import GameSettings from "../config/GameSettings";
 
 export class CharacterSelectScene extends Phaser.Scene {

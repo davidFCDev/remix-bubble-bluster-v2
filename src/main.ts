@@ -1,5 +1,4 @@
 import { initRemix } from "@insidethesim/remix-dev";
-import * as Phaser from "phaser";
 import GameSettings from "./config/GameSettings";
 import { CharacterSelectScene } from "./scenes/CharacterSelectScene";
 import { GameScene } from "./scenes/GameScene";

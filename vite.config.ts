@@ -4,9 +4,7 @@ import remixConfig from "./remix.config";
 
 export default defineConfig({
   plugins: [remixPlugin(remixConfig)],
-  resolve: {
-    alias: {
-      phaser: "phaser/dist/phaser.esm.js",
-    },
+  define: {
+    global: "window",
   },
 });

@@ -1,4 +1,3 @@
-import * as Phaser from "phaser";
 import GameSettings from "../config/GameSettings";
 
 export class PreloadScene extends Phaser.Scene {
@@ -340,6 +339,22 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     this.progressBarElement = undefined;
+
+    // SDK: Game is ready to play
+    if (window.FarcadeSDK) {
+      window.FarcadeSDK.singlePlayer.actions.ready();
+
+      // Handle play again requests from SDK
+      window.FarcadeSDK.on("play_again", () => {
+        this.scene.start("StartScene");
+      });
+
+      // Handle mute/unmute from SDK
+      window.FarcadeSDK.on("toggle_mute", (data: { isMuted: boolean }) => {
+        this.sound.mute = data.isMuted;
+      });
+    }
+
     this.scene.start("StartScene");
   }
 }

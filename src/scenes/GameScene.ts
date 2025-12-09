@@ -1,4 +1,3 @@
-import * as Phaser from "phaser";
 import GameSettings from "../config/GameSettings";
 import { BubbleVisuals } from "../objects/BubbleVisuals";
 
@@ -64,6 +63,7 @@ export class GameScene extends Phaser.Scene {
   private bgImage!: Phaser.GameObjects.Image;
   private lastBgIndex: number = -1;
   private currentMusic: Phaser.Sound.BaseSound | null = null;
+  private skillButtonPressed: boolean = false; // Track if skill button was pressed
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -199,14 +199,20 @@ export class GameScene extends Phaser.Scene {
         this.startGame();
         return;
       }
-      // Mobile: Start aiming (handled in pointermove)
+
+      // Start aiming immediately on touch/click
+      const { width, height } = this.cameras.main;
+      const launcherX = width / 2;
+      const launcherY = height - 20;
+      const angle = Math.atan2(launcherY - pointer.y, pointer.x - launcherX);
+      this.launcherAngle = Phaser.Math.Clamp(angle, 0.2, Math.PI - 0.2);
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       if (!this.gameStarted || this.gameOver) return;
 
-      // Only allow aiming via touch drag on mobile
-      if (pointer.isDown && (pointer as any).pointerType === "touch") {
+      // Update aim while dragging
+      if (pointer.isDown) {
         const { width, height } = this.cameras.main;
         const launcherX = width / 2;
         const launcherY = height - 20;
@@ -218,14 +224,12 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-      if (
-        this.gameStarted &&
-        !this.gameOver &&
-        (pointer as any).pointerType === "touch"
-      ) {
-        // Shoot on release (Mobile only)
+      if (this.gameStarted && !this.gameOver && !this.skillButtonPressed) {
+        // Shoot on release (only if skill button wasn't pressed)
         this.shootBubble();
       }
+      // Reset skill button flag
+      this.skillButtonPressed = false;
     });
 
     // Initialize Level
@@ -274,6 +278,7 @@ export class GameScene extends Phaser.Scene {
       "pointerdown",
       (pointer: any, localX: any, localY: any, event: any) => {
         event.stopPropagation(); // Prevent shooting when clicking skill
+        this.skillButtonPressed = true; // Mark that skill button was pressed
         this.playSound("sfx_button");
         this.activateAbility();
       }
@@ -704,6 +709,11 @@ export class GameScene extends Phaser.Scene {
     // Play shoot sound safely
     this.playSound("sfx_shoot");
 
+    // SDK: Haptic feedback on shoot
+    if (window.FarcadeSDK) {
+      window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+    }
+
     this.canShoot = false;
 
     const speed = 15; // Increased speed for Phaser
@@ -730,6 +740,11 @@ export class GameScene extends Phaser.Scene {
 
     // Play generic skill sound with reduced volume
     this.playSound("sfx_skill", { volume: 0.4 });
+
+    // SDK: Haptic feedback on skill activation
+    if (window.FarcadeSDK) {
+      window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
+    }
 
     if (this.selectedCharacter.id === "Pinky") {
       this.currentBubble.color = "#FF6600";
@@ -1868,7 +1883,7 @@ export class GameScene extends Phaser.Scene {
   lowerCeiling() {
     this.ceilingOffset += (this.BUBBLE_SIZE * Math.sqrt(3)) / 2;
     this.drawCeiling();
-    
+
     // Check if this caused game over (with delay so player sees bubbles cross the line)
     this.checkGameOverWithDelay();
   }
@@ -2072,29 +2087,13 @@ export class GameScene extends Phaser.Scene {
     if (this.timerEvent) this.timerEvent.remove();
     this.playSound("sfx_game_over");
 
-    this.add
-      .text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2,
-        message,
-        {
-          fontSize: "64px",
-          color: "#ff0000",
-          fontFamily: "Pixelify Sans",
-          fontStyle: "bold",
-          stroke: "#000000",
-          strokeThickness: 6,
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(100);
+    // Stop background music
+    if (this.currentMusic) this.currentMusic.stop();
 
-    this.time.delayedCall(1000, () => {
-      this.input.once("pointerdown", () => {
-        if (this.currentMusic) this.currentMusic.stop();
-        this.scene.start("StartScene");
-      });
-    });
+    // SDK: Call gameOver with the final score
+    if (window.FarcadeSDK) {
+      window.FarcadeSDK.singlePlayer.actions.gameOver({ score: this.score });
+    }
   }
 
   onTimerTick() {

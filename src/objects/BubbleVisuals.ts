@@ -1,5 +1,3 @@
-import * as Phaser from "phaser";
-
 export class BubbleVisuals {
   static generateTextures(scene: Phaser.Scene) {
     // Generate Particle Texture
