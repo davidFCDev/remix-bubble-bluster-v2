@@ -194,6 +194,55 @@ export class BubbleVisuals {
 
       stopGraphics.generateTexture("stop_texture", 64, 64);
     }
+
+    // Generate Bomb Texture (Explosive Sphere)
+    if (!scene.textures.exists("bomb_texture")) {
+      const bombGraphics = scene.make.graphics({ x: 0, y: 0 });
+
+      // Base dark sphere
+      bombGraphics.fillStyle(0x1a1a1a, 1); // Very dark gray
+      bombGraphics.fillCircle(32, 32, 26);
+
+      // Metallic sheen
+      bombGraphics.fillStyle(0x333333, 0.8);
+      bombGraphics.fillCircle(28, 28, 20);
+
+      // Red danger glow
+      bombGraphics.fillStyle(0xff3300, 0.3);
+      bombGraphics.fillCircle(32, 34, 22);
+
+      // Skull/danger symbol - simplified X
+      bombGraphics.lineStyle(3, 0xff4444, 0.9);
+      bombGraphics.beginPath();
+      bombGraphics.moveTo(22, 26);
+      bombGraphics.lineTo(42, 42);
+      bombGraphics.moveTo(42, 26);
+      bombGraphics.lineTo(22, 42);
+      bombGraphics.strokePath();
+
+      // Fuse cap at top
+      bombGraphics.fillStyle(0x8b4513, 1); // Brown
+      bombGraphics.fillRect(28, 4, 8, 8);
+
+      // Fuse string
+      bombGraphics.lineStyle(2, 0xdaa520, 1); // Golden rod
+      bombGraphics.beginPath();
+      bombGraphics.moveTo(32, 4);
+      bombGraphics.lineTo(36, 0);
+      bombGraphics.strokePath();
+
+      // Spark at fuse tip
+      bombGraphics.fillStyle(0xffff00, 1);
+      bombGraphics.fillCircle(36, 0, 3);
+      bombGraphics.fillStyle(0xff6600, 0.8);
+      bombGraphics.fillCircle(36, 0, 2);
+
+      // Highlight
+      bombGraphics.fillStyle(0xffffff, 0.4);
+      bombGraphics.fillCircle(22, 22, 4);
+
+      bombGraphics.generateTexture("bomb_texture", 64, 64);
+    }
   }
 
   static create(
@@ -514,6 +563,76 @@ export class BubbleVisuals {
         frost1,
         frost2,
         frost3,
+      ]);
+      return container;
+    } else if (color === "BOMB") {
+      // Bomb Visual: Explosive dark sphere with animated fuse
+
+      // 1. Danger Glow (Pulsing red)
+      const dangerGlow = scene.add.circle(0, 0, size / 2 + 5, 0xff3300, 0.3);
+      scene.tweens.add({
+        targets: dangerGlow,
+        alpha: { from: 0.3, to: 0.6 },
+        scale: { from: 1, to: 1.1 },
+        duration: 400,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // 2. Base Bomb Texture
+      const bombBubble = scene.add.image(0, 0, "bomb_texture");
+      bombBubble.setDisplaySize(size, size);
+
+      // 3. Metallic Border
+      const border = scene.add.graphics();
+      border.lineStyle(2, 0x444444, 1);
+      border.strokeCircle(0, 0, size / 2 - 1.5);
+
+      // 4. Animated Spark at fuse
+      const spark = scene.add.circle(size / 8, -size / 2 + 2, 4, 0xffff00, 1);
+      scene.tweens.add({
+        targets: spark,
+        alpha: { from: 1, to: 0.3 },
+        scale: { from: 1, to: 1.5 },
+        duration: 200,
+        yoyo: true,
+        repeat: -1,
+      });
+
+      // 5. Spark particles
+      const sparkParticle1 = scene.add.circle(
+        size / 8 + 3,
+        -size / 2,
+        2,
+        0xff6600,
+        0.8
+      );
+      const sparkParticle2 = scene.add.circle(
+        size / 8 - 2,
+        -size / 2 + 3,
+        1.5,
+        0xffaa00,
+        0.7
+      );
+
+      scene.tweens.add({
+        targets: [sparkParticle1, sparkParticle2],
+        y: "-=5",
+        alpha: 0,
+        duration: 300,
+        yoyo: true,
+        repeat: -1,
+        ease: "Power2",
+      });
+
+      container.add([
+        dangerGlow,
+        bombBubble,
+        border,
+        spark,
+        sparkParticle1,
+        sparkParticle2,
       ]);
       return container;
     }

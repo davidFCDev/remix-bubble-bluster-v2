@@ -435,9 +435,8 @@ export class GameScene extends Phaser.Scene {
     switch (level) {
       case 1:
         return {
-          name: "STOP + PRISM",
-          description:
-            "STOP: Drop it to freeze the ceiling!\nPRISM: Universal wildcard, matches any color.",
+          name: "BOMB",
+          description: "Explodes on contact!\nDestroys all adjacent bubbles.",
         };
       case 2:
         return {
@@ -971,8 +970,13 @@ export class GameScene extends Phaser.Scene {
           // Ice Lance destroys the bubble and continues
           const color = this.grid[pos.row][pos.col]!;
 
-          // Anchor, Slime and Stop are immune to Ice Lance (Prism lets it pass through)
-          if (color === "ANCHOR" || color === "SLIME" || color === "STOP") {
+          // Anchor, Slime, Stop and Bomb are immune to Ice Lance (Prism lets it pass through)
+          if (
+            color === "ANCHOR" ||
+            color === "SLIME" ||
+            color === "STOP" ||
+            color === "BOMB"
+          ) {
             // Lance breaks on Anchor or Slime
             if (bubble.sprite) bubble.sprite.destroy();
             this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
@@ -1023,11 +1027,12 @@ export class GameScene extends Phaser.Scene {
                 // Ice Lance destroys the bubble and continues
                 const color = this.grid[r][c]!;
 
-                // Anchor, Slime and Stop are immune to Ice Lance (Prism lets it pass)
+                // Anchor, Slime, Stop and Bomb are immune to Ice Lance (Prism lets it pass)
                 if (
                   color === "ANCHOR" ||
                   color === "SLIME" ||
-                  color === "STOP"
+                  color === "STOP" ||
+                  color === "BOMB"
                 ) {
                   // Lance breaks on Anchor or Slime
                   if (bubble.sprite) bubble.sprite.destroy();
@@ -1226,8 +1231,14 @@ export class GameScene extends Phaser.Scene {
         neighbors.forEach((n) => {
           if (this.grid[n.r][n.c]) {
             const val = this.grid[n.r][n.c]!;
-            // Anchor, Slime and Stop are immune to Bomb (Prism is destroyed)
-            if (val === "ANCHOR" || val === "SLIME" || val === "STOP") return;
+            // Anchor, Slime, Stop and Bomb are immune to Bomb skill (Prism is destroyed)
+            if (
+              val === "ANCHOR" ||
+              val === "SLIME" ||
+              val === "STOP" ||
+              val === "BOMB"
+            )
+              return;
 
             this.grid[n.r][n.c] = null;
             if (this.bubbleSprites[n.r][n.c]) {
@@ -1246,8 +1257,14 @@ export class GameScene extends Phaser.Scene {
           secondNeighbors.forEach((sn) => {
             if (this.grid[sn.r][sn.c]) {
               const val = this.grid[sn.r][sn.c]!;
-              // Anchor, Slime and Stop are immune to Bomb (Prism is destroyed)
-              if (val === "ANCHOR" || val === "SLIME" || val === "STOP") return;
+              // Anchor, Slime, Stop and Bomb are immune to Bomb skill (Prism is destroyed)
+              if (
+                val === "ANCHOR" ||
+                val === "SLIME" ||
+                val === "STOP" ||
+                val === "BOMB"
+              )
+                return;
 
               this.grid[sn.r][sn.c] = null;
               if (this.bubbleSprites[sn.r][sn.c]) {
@@ -1308,11 +1325,12 @@ export class GameScene extends Phaser.Scene {
 
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
-          // Anchor, Slime and Stop are immune to Color Blast (Prism can be targeted)
+          // Anchor, Slime, Stop and Bomb are immune to Color Blast (Prism can be targeted)
           if (
             targetColor !== "ANCHOR" &&
             targetColor !== "SLIME" &&
-            targetColor !== "STOP"
+            targetColor !== "STOP" &&
+            targetColor !== "BOMB"
           ) {
             // Destroy all bubbles of this specific color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
@@ -1351,6 +1369,8 @@ export class GameScene extends Phaser.Scene {
         this.removeFloatingBubbles();
         this.updateUI();
       } else {
+        // Check if we hit a BOMB bubble (special bubble in grid)
+        this.checkBombTrigger(pos.row, pos.col);
         this.checkAndRemoveMatches(pos.row, pos.col, bubble);
       }
     }
@@ -1510,9 +1530,83 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  checkBombTrigger(row: number, col: number) {
+    // Check if any neighbor is a BOMB - if so, trigger explosion
+    const neighbors = this.getNeighbors(row, col);
+
+    for (const n of neighbors) {
+      if (this.grid[n.r]?.[n.c] === "BOMB") {
+        this.triggerBombExplosion(n.r, n.c);
+      }
+    }
+  }
+
+  triggerBombExplosion(bombRow: number, bombCol: number) {
+    // Play explosion sound
+    this.playSound("sfx_pop");
+
+    // Get bomb position for visual effect
+    const bombSprite = this.bubbleSprites[bombRow][bombCol];
+    if (bombSprite) {
+      this.playPopAnimation(
+        bombSprite.x + this.gameContainer.x,
+        bombSprite.y + this.gameContainer.y,
+        "#FF3300"
+      );
+    }
+
+    // Destroy the bomb itself
+    this.grid[bombRow][bombCol] = null;
+    if (this.bubbleSprites[bombRow][bombCol]) {
+      this.bubbleSprites[bombRow][bombCol]!.destroy();
+      this.bubbleSprites[bombRow][bombCol] = null;
+    }
+
+    // Destroy all neighbors
+    const neighbors = this.getNeighbors(bombRow, bombCol);
+    neighbors.forEach((n) => {
+      const val = this.grid[n.r]?.[n.c];
+      if (val) {
+        // ANCHOR, SLIME, STOP are immune to explosion (BOMB triggers chain reaction separately)
+        if (val === "ANCHOR" || val === "SLIME" || val === "STOP") return;
+
+        // If neighbor is another BOMB, trigger chain reaction
+        if (val === "BOMB") {
+          this.time.delayedCall(100, () => {
+            this.triggerBombExplosion(n.r, n.c);
+          });
+          return;
+        }
+
+        this.grid[n.r][n.c] = null;
+        if (this.bubbleSprites[n.r][n.c]) {
+          const sprite = this.bubbleSprites[n.r][n.c]!;
+          this.playPopAnimation(
+            sprite.x + this.gameContainer.x,
+            sprite.y + this.gameContainer.y,
+            val
+          );
+          sprite.destroy();
+          this.bubbleSprites[n.r][n.c] = null;
+        }
+        this.score += 15; // Bonus points for bomb destruction
+      }
+    });
+
+    this.removeFloatingBubbles();
+    this.showCharacterSpeech("BOOM!");
+    this.updateUI();
+  }
+
   checkAndRemoveMatches(row: number, col: number, bubble?: Bubble) {
     const color = this.grid[row][col];
-    if (!color || color === "STONE" || color === "ANCHOR" || color === "SLIME")
+    if (
+      !color ||
+      color === "STONE" ||
+      color === "ANCHOR" ||
+      color === "SLIME" ||
+      color === "BOMB"
+    )
       return;
 
     // If Wild (Whitey), it matches with ANY neighbor color
@@ -2310,11 +2404,10 @@ export class GameScene extends Phaser.Scene {
   placeSpecialBubblesForLevel(initialRows: number) {
     switch (this.level) {
       case 1:
-        // Stop: 1 (freezes ceiling when dropped) + Prisma: 2-4
-        this.placeSpecialBubble("STOP", initialRows);
-        const numPrism = Phaser.Math.Between(2, 4);
-        for (let i = 0; i < numPrism; i++) {
-          this.placeSpecialBubble("PRISM", initialRows);
+        // Bomb: 2-3 (explodes when hit) - Tutorial level for BOMB
+        const numBomb = Phaser.Math.Between(2, 3);
+        for (let i = 0; i < numBomb; i++) {
+          this.placeSpecialBubble("BOMB", initialRows);
         }
         break;
 
