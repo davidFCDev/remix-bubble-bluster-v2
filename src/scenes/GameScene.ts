@@ -1867,6 +1867,29 @@ export class GameScene extends Phaser.Scene {
 
   lowerCeiling() {
     this.ceilingOffset += (this.BUBBLE_SIZE * Math.sqrt(3)) / 2;
+    this.drawCeiling();
+    
+    // Check if this caused game over (with delay so player sees bubbles cross the line)
+    this.checkGameOverWithDelay();
+  }
+
+  checkGameOverWithDelay() {
+    // Check if any bubble crossed the line
+    for (let r = 0; r < this.GRID_HEIGHT; r++) {
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      for (let c = 0; c < maxCols; c++) {
+        if (this.grid[r][c]) {
+          const { y } = this.getBubblePos(r, c);
+          if (y + this.ceilingOffset + this.GRID_OFFSET_Y > this.LIMIT_LINE_Y) {
+            // Bubble crossed the line - wait a moment so player sees it, then game over
+            this.time.delayedCall(500, () => {
+              this.handleGameOver("GAME OVER");
+            });
+            return;
+          }
+        }
+      }
+    }
   }
 
   showFreezeEffect() {
@@ -2027,12 +2050,15 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
-          // Check if bubble crosses the limit line
+          // Check if bubble crosses the limit line (with small margin for visual clarity)
           if (
             y + this.ceilingOffset + this.GRID_OFFSET_Y >
-            this.LIMIT_LINE_Y
+            this.LIMIT_LINE_Y + this.BUBBLE_SIZE / 4
           ) {
-            this.handleGameOver("GAME OVER");
+            // Small delay so player sees the bubble cross the line
+            this.time.delayedCall(300, () => {
+              this.handleGameOver("GAME OVER");
+            });
             return;
           }
         }
