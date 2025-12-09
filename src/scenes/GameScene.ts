@@ -410,16 +410,44 @@ export class GameScene extends Phaser.Scene {
       this.getRandomColor(Array.from(usedColors)),
     ];
 
-    if (this.level > 1) {
-      this.showLevelOverlay(this.level, () => {
-        this.spawnBubble();
-        this.updateUI();
-        this.gameStarted = true;
-      });
-    } else {
+    // Show level overlay for all levels (tutorial info for levels 1-5)
+    this.showLevelOverlay(this.level, () => {
       this.spawnBubble();
       this.updateUI();
       this.gameStarted = true;
+    });
+  }
+
+  // Get tutorial text for new bubble types introduced in each level
+  getNewBubbleInfo(level: number): { name: string; description: string } | null {
+    switch (level) {
+      case 1:
+        return {
+          name: "PRISM",
+          description: "Universal wildcard.\nMatches with any color!"
+        };
+      case 2:
+        return {
+          name: "STONE",
+          description: "Solid obstacle.\nOnly falls if you break its support."
+        };
+      case 3:
+        return {
+          name: "CHAMELEON",
+          description: "Changes color each turn.\nShoot when it matches!"
+        };
+      case 4:
+        return {
+          name: "ANCHOR",
+          description: "Immune to abilities.\nOnly falls by dropping it."
+        };
+      case 5:
+        return {
+          name: "SLIME",
+          description: "Infects neighbors every 6 turns.\nShoot it to cure!"
+        };
+      default:
+        return null;
     }
   }
 
@@ -435,8 +463,9 @@ export class GameScene extends Phaser.Scene {
       0x000000,
       0.85
     );
-    const text = this.add
-      .text(width / 2, height / 2, `LEVEL ${level}`, {
+    
+    const levelText = this.add
+      .text(width / 2, height / 2 - 60, `LEVEL ${level}`, {
         fontFamily: "Pixelify Sans",
         fontSize: "80px",
         color: "#B7FF00",
@@ -445,27 +474,81 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScale(0);
 
-    overlay.add([bg, text]);
+    overlay.add([bg, levelText]);
+
+    // Check if this level introduces a new bubble type
+    const bubbleInfo = this.getNewBubbleInfo(level);
+    
+    let bubbleNameText: Phaser.GameObjects.Text | null = null;
+    let bubbleDescText: Phaser.GameObjects.Text | null = null;
+    
+    if (bubbleInfo) {
+      bubbleNameText = this.add
+        .text(width / 2, height / 2 + 40, bubbleInfo.name, {
+          fontFamily: "Pixelify Sans",
+          fontSize: "36px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setAlpha(0);
+
+      bubbleDescText = this.add
+        .text(width / 2, height / 2 + 100, bubbleInfo.description, {
+          fontFamily: "Pixelify Sans",
+          fontSize: "24px",
+          color: "#CCCCCC",
+          align: "center",
+        })
+        .setOrigin(0.5)
+        .setAlpha(0);
+
+      overlay.add([bubbleNameText, bubbleDescText]);
+    }
+
     overlay.setDepth(100); // Ensure it's on top
 
     // Animation
     this.tweens.add({
-      targets: text,
+      targets: levelText,
       scale: 1,
       duration: 500,
       ease: "Back.out",
       onComplete: () => {
-        this.time.delayedCall(1500, () => {
+        // Show bubble info after level text appears
+        if (bubbleNameText && bubbleDescText) {
           this.tweens.add({
-            targets: overlay,
-            alpha: 0,
-            duration: 500,
+            targets: [bubbleNameText, bubbleDescText],
+            alpha: 1,
+            duration: 300,
             onComplete: () => {
-              overlay.destroy();
-              onComplete();
+              // Wait longer to read the info
+              this.time.delayedCall(2500, () => {
+                this.tweens.add({
+                  targets: overlay,
+                  alpha: 0,
+                  duration: 500,
+                  onComplete: () => {
+                    overlay.destroy();
+                    onComplete();
+                  },
+                });
+              });
             },
           });
-        });
+        } else {
+          this.time.delayedCall(1500, () => {
+            this.tweens.add({
+              targets: overlay,
+              alpha: 0,
+              duration: 500,
+              onComplete: () => {
+                overlay.destroy();
+                onComplete();
+              },
+            });
+          });
+        }
       },
     });
   }
