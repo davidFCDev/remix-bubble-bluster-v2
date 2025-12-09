@@ -193,14 +193,17 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Touch/Mouse Controls
+    // Touch Controls (mobile only - not mouse)
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // Only respond to touch, not mouse
+      if (!pointer.wasTouch) return;
+
       if (!this.gameStarted) {
         this.startGame();
         return;
       }
 
-      // Start aiming immediately on touch/click
+      // Start aiming immediately on touch
       const { width, height } = this.cameras.main;
       const launcherX = width / 2;
       const launcherY = height - 20;
@@ -209,6 +212,8 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      // Only respond to touch, not mouse
+      if (!pointer.wasTouch) return;
       if (!this.gameStarted || this.gameOver) return;
 
       // Update aim while dragging
@@ -224,6 +229,9 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      // Only respond to touch, not mouse
+      if (!pointer.wasTouch) return;
+
       if (this.gameStarted && !this.gameOver && !this.skillButtonPressed) {
         // Shoot on release (only if skill button wasn't pressed)
         this.shootBubble();
@@ -1021,7 +1029,7 @@ export class GameScene extends Phaser.Scene {
             );
             sprite.destroy();
             this.bubbleSprites[pos.row][pos.col] = null;
-            this.score += 50; // Bonus points for lance destruction
+            this.score += 500; // Bonus points for lance destruction
           }
           // Do NOT stop the lance, continue loop
           continue;
@@ -1079,7 +1087,7 @@ export class GameScene extends Phaser.Scene {
                   );
                   sprite.destroy();
                   this.bubbleSprites[r][c] = null;
-                  this.score += 50;
+                  this.score += 500;
                 }
                 // Do NOT stop, continue checking other collisions?
                 // Actually, we should probably break this inner loop but NOT splice the flying bubble
@@ -1616,7 +1624,7 @@ export class GameScene extends Phaser.Scene {
           sprite.destroy();
           this.bubbleSprites[n.r][n.c] = null;
         }
-        this.score += 15; // Bonus points for bomb destruction
+        this.score += 150; // Bonus points for bomb destruction
       }
     });
 
@@ -1680,7 +1688,7 @@ export class GameScene extends Phaser.Scene {
         }
       });
       this.removeFloatingBubbles();
-      this.score += matches.length * 10;
+      this.score += matches.length * 100;
 
       // Character Speech Logic
       if (matches.length >= 8) {
@@ -1829,7 +1837,7 @@ export class GameScene extends Phaser.Scene {
             sprite.destroy();
             this.bubbleSprites[r][c] = null;
           }
-          this.score += 20;
+          this.score += 200;
         }
       }
     }
@@ -1872,9 +1880,41 @@ export class GameScene extends Phaser.Scene {
 
     if (this.checkLevelComplete()) {
       this.gameStarted = false;
+
+      // Calculate level completion bonus with time multiplier
+      const baseBonus = 5000;
+      const maxTime = GameSettings.gameplay.levelTime;
+      const timeMultiplier = 1 + this.levelTime / maxTime; // 1.0 to 2.0
+      const levelBonus = Math.floor(baseBonus * timeMultiplier);
+      this.score += levelBonus;
+
+      // Show bonus text
+      const bonusText = this.add
+        .text(
+          this.cameras.main.width / 2,
+          this.cameras.main.height / 2,
+          `LEVEL ${
+            this.level
+          } CLEAR!\n+${levelBonus} (x${timeMultiplier.toFixed(1)})`,
+          {
+            fontSize: "32px",
+            color: "#B7FF00",
+            fontFamily: "Pixelify Sans",
+            fontStyle: "bold",
+            stroke: "#000000",
+            strokeThickness: 4,
+            align: "center",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(100);
+
       this.level++;
       this.playSound("sfx_level_complete", { volume: 0.4 });
+      this.updateUI();
+
       this.time.delayedCall(1000, () => {
+        bonusText.destroy();
         this.startLevel();
       });
     }
