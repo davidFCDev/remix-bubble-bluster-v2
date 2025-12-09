@@ -380,11 +380,8 @@ export class GameScene extends Phaser.Scene {
     this.gameContainer.removeAll(true); // Clear existing bubbles
     // Ceiling graphics is now outside container, so we don't add it here
 
-    // Populate Grid
-    const initialRows = Math.min(
-      6 + Math.floor((this.level - 1) / 2),
-      this.GRID_HEIGHT - 2
-    );
+    // Populate Grid - Fixed 6 rows for all levels
+    const initialRows = 6;
     const usedColors = new Set<string>();
 
     for (let row = 0; row < initialRows; row++) {
@@ -404,24 +401,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Place ONE Prism (Level 1 Testing)
-    // Find a valid spot (not row 0, not empty)
-    let prismPlaced = false;
-    let attempts = 0;
-    while (!prismPlaced && attempts < 100) {
-      const r = Phaser.Math.Between(1, initialRows - 1); // Row > 0
-      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
-      const c = Phaser.Math.Between(0, maxCols - 1);
-
-      if (this.grid[r][c]) {
-        // Replace with Prism
-        if (this.bubbleSprites[r][c]) this.bubbleSprites[r][c]!.destroy();
-        this.grid[r][c] = "PRISM";
-        this.createBubbleSprite(r, c, "PRISM");
-        prismPlaced = true;
-      }
-      attempts++;
-    }
+    // Level Progression: Special Bubbles
+    this.placeSpecialBubblesForLevel(initialRows);
 
     // Setup Next Bubbles
     this.nextBubbles = [
@@ -549,7 +530,22 @@ export class GameScene extends Phaser.Scene {
 
   spawnBubble() {
     const color = this.nextBubbles.shift()!;
-    this.nextBubbles.push(this.getRandomColor(GameSettings.colors.all)); // Simplified for now
+    // Prevent more than 3 consecutive same colors
+    let newColor = this.getRandomColor(GameSettings.colors.all);
+    let consecutiveCount = 0;
+    for (let i = this.nextBubbles.length - 1; i >= 0; i--) {
+      if (this.nextBubbles[i] === newColor) {
+        consecutiveCount++;
+      } else {
+        break;
+      }
+    }
+    // If we already have 2 of this color in queue, pick a different one
+    if (consecutiveCount >= 2) {
+      const otherColors = GameSettings.colors.all.filter(c => c !== newColor);
+      newColor = otherColors[Math.floor(Math.random() * otherColors.length)] || newColor;
+    }
+    this.nextBubbles.push(newColor);
 
     const { width, height } = this.cameras.main;
 
@@ -878,9 +874,9 @@ export class GameScene extends Phaser.Scene {
           // Ice Lance destroys the bubble and continues
           const color = this.grid[pos.row][pos.col]!;
 
-          // Anchor, Slime and Prism are immune to Ice Lance
-          if (color === "ANCHOR" || color === "SLIME" || color === "PRISM") {
-            // Lance breaks on Anchor, Slime or Prism
+          // Anchor and Slime are immune to Ice Lance (Prism lets it pass through)
+          if (color === "ANCHOR" || color === "SLIME") {
+            // Lance breaks on Anchor or Slime
             if (bubble.sprite) bubble.sprite.destroy();
             this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
             this.flyingBubbles.splice(i, 1);
@@ -930,13 +926,12 @@ export class GameScene extends Phaser.Scene {
                 // Ice Lance destroys the bubble and continues
                 const color = this.grid[r][c]!;
 
-                // Anchor, Slime and Prism are immune to Ice Lance
+                // Anchor and Slime are immune to Ice Lance (Prism lets it pass)
                 if (
                   color === "ANCHOR" ||
-                  color === "SLIME" ||
-                  color === "PRISM"
+                  color === "SLIME"
                 ) {
-                  // Lance breaks on Anchor, Slime or Prism
+                  // Lance breaks on Anchor or Slime
                   if (bubble.sprite) bubble.sprite.destroy();
                   this.playPopAnimation(bubble.x, bubble.y, "#00FFFF");
                   this.flyingBubbles.splice(i, 1);
@@ -1133,8 +1128,8 @@ export class GameScene extends Phaser.Scene {
         neighbors.forEach((n) => {
           if (this.grid[n.r][n.c]) {
             const val = this.grid[n.r][n.c]!;
-            // Anchor, Slime and Prism are immune to Bomb
-            if (val === "ANCHOR" || val === "SLIME" || val === "PRISM") return;
+            // Anchor and Slime are immune to Bomb (Prism is destroyed)
+            if (val === "ANCHOR" || val === "SLIME") return;
 
             this.grid[n.r][n.c] = null;
             if (this.bubbleSprites[n.r][n.c]) {
@@ -1153,8 +1148,8 @@ export class GameScene extends Phaser.Scene {
           secondNeighbors.forEach((sn) => {
             if (this.grid[sn.r][sn.c]) {
               const val = this.grid[sn.r][sn.c]!;
-              // Anchor, Slime and Prism are immune to Bomb
-              if (val === "ANCHOR" || val === "SLIME" || val === "PRISM")
+              // Anchor and Slime are immune to Bomb (Prism is destroyed)
+              if (val === "ANCHOR" || val === "SLIME")
                 return;
 
               this.grid[sn.r][sn.c] = null;
@@ -1216,11 +1211,10 @@ export class GameScene extends Phaser.Scene {
 
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
-          // Anchor, Slime and Prism are immune to Color Blast (Pinky)
+          // Anchor and Slime are immune to Color Blast (Prism can be targeted)
           if (
             targetColor !== "ANCHOR" &&
-            targetColor !== "SLIME" &&
-            targetColor !== "PRISM"
+            targetColor !== "SLIME"
           ) {
             // Destroy all bubbles of this specific color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
@@ -1652,7 +1646,8 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
-          if (y + this.ceilingOffset + this.GRID_OFFSET_Y > this.LIMIT_LINE_Y) {
+          // Check if bubble is past the limit line (allow it to visually cross)
+          if (y + this.ceilingOffset + this.GRID_OFFSET_Y > this.LIMIT_LINE_Y + this.BUBBLE_SIZE) {
             this.handleGameOver("GAME OVER");
             return;
           }
@@ -1984,5 +1979,146 @@ export class GameScene extends Phaser.Scene {
       this.checkAndRemoveMatches(row, col);
     }
     this.playSound("sfx_pop", { volume: 0.5, rate: 1.5 }); // Higher pitch pop
+  }
+
+  // Helper to place a single special bubble
+  placeSpecialBubble(type: string, initialRows: number): boolean {
+    let attempts = 0;
+    while (attempts < 100) {
+      // Row > 0 for SLIME and STONE (Stones not on ceiling, not adjacent to other stones)
+      const minRow = (type === "SLIME" || type === "STONE") ? 1 : 0;
+      const r = Phaser.Math.Between(minRow, initialRows - 1);
+      const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+      const c = Phaser.Math.Between(0, maxCols - 1);
+
+      // Must have an existing bubble AND not already be special
+      const current = this.grid[r][c];
+      if (current && current.startsWith("#")) {
+        // For STONE: Check no adjacent stones
+        if (type === "STONE") {
+          const neighbors = this.getNeighbors(r, c);
+          const hasAdjacentStone = neighbors.some(n => this.grid[n.r]?.[n.c] === "STONE");
+          if (hasAdjacentStone) {
+            attempts++;
+            continue;
+          }
+        }
+        
+        if (this.bubbleSprites[r][c]) this.bubbleSprites[r][c]!.destroy();
+
+        // For Chameleon, we need a base color
+        if (type === "CHAMELEON") {
+          const baseColor =
+            GameSettings.colors.all[
+              Math.floor(Math.random() * GameSettings.colors.all.length)
+            ];
+          this.grid[r][c] = `CHAMELEON:${baseColor}`;
+        } else {
+          this.grid[r][c] = type;
+        }
+
+        this.createBubbleSprite(r, c, this.grid[r][c]!);
+        return true;
+      }
+      attempts++;
+    }
+    return false;
+  }
+
+  // Level progression logic for special bubbles
+  placeSpecialBubblesForLevel(initialRows: number) {
+    switch (this.level) {
+      case 1:
+        // Prisma: 2-4
+        const numPrism = Phaser.Math.Between(2, 4);
+        for (let i = 0; i < numPrism; i++) {
+          this.placeSpecialBubble("PRISM", initialRows);
+        }
+        break;
+
+      case 2:
+        // Piedra: 5-7
+        const numStone = Phaser.Math.Between(5, 7);
+        for (let i = 0; i < numStone; i++) {
+          this.placeSpecialBubble("STONE", initialRows);
+        }
+        break;
+
+      case 3:
+        // Camaleón: 5-7
+        const numChameleon = Phaser.Math.Between(5, 7);
+        for (let i = 0; i < numChameleon; i++) {
+          this.placeSpecialBubble("CHAMELEON", initialRows);
+        }
+        break;
+
+      case 4:
+        // Ancla: 2-3
+        const numAnchor = Phaser.Math.Between(2, 3);
+        for (let i = 0; i < numAnchor; i++) {
+          this.placeSpecialBubble("ANCHOR", initialRows);
+        }
+        break;
+
+      case 5:
+        // Slime: 1 sola
+        this.placeSpecialBubble("SLIME", initialRows);
+        break;
+
+      case 6:
+        // Mezcla: Prisma + Piedra
+        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+          this.placeSpecialBubble("PRISM", initialRows);
+        }
+        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
+          this.placeSpecialBubble("STONE", initialRows);
+        }
+        break;
+
+      case 7:
+        // Mezcla: Piedra + Camaleón
+        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
+          this.placeSpecialBubble("STONE", initialRows);
+        }
+        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
+          this.placeSpecialBubble("CHAMELEON", initialRows);
+        }
+        break;
+
+      case 8:
+        // Mezcla: Camaleón + Ancla
+        for (let i = 0; i < Phaser.Math.Between(3, 5); i++) {
+          this.placeSpecialBubble("CHAMELEON", initialRows);
+        }
+        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+          this.placeSpecialBubble("ANCHOR", initialRows);
+        }
+        break;
+
+      case 9:
+        // Mezcla: Ancla + Slime
+        for (let i = 0; i < Phaser.Math.Between(2, 3); i++) {
+          this.placeSpecialBubble("ANCHOR", initialRows);
+        }
+        this.placeSpecialBubble("SLIME", initialRows);
+        break;
+
+      default:
+        // Nivel 10+: Todas mezcladas
+        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
+          this.placeSpecialBubble("PRISM", initialRows);
+        }
+        for (let i = 0; i < Phaser.Math.Between(2, 4); i++) {
+          this.placeSpecialBubble("STONE", initialRows);
+        }
+        for (let i = 0; i < Phaser.Math.Between(2, 4); i++) {
+          this.placeSpecialBubble("CHAMELEON", initialRows);
+        }
+        for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
+          this.placeSpecialBubble("ANCHOR", initialRows);
+        }
+        this.placeSpecialBubble("SLIME", initialRows);
+        break;
+    }
   }
 }
