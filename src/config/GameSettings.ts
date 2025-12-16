@@ -40,13 +40,13 @@ export const GameSettings = {
       id: "neon",
       name: "Neon",
       description: "Glowing cyberpunk spheres",
-      locked: true,
+      locked: false,
     },
     {
       id: "candy",
       name: "Candy",
       description: "Sweet striped lollipop bubbles",
-      locked: true,
+      locked: false,
     },
   ],
   gameplay: {
