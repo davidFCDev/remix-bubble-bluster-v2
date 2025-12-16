@@ -83,6 +83,7 @@ export const GameSettings = {
         frameWidth: 64,
         frameHeight: 64,
         frameCount: 12,
+        scale: 3, // 64x64 needs half scale compared to 32x32
       },
     },
   ],

@@ -135,10 +135,11 @@ export class GameScene extends Phaser.Scene {
     this.arrowGraphics = this.add.graphics();
 
     // Character Sprite (Bottom Left, larger)
+    const charScale = this.selectedCharacter.frameConfig?.scale || 6;
     this.characterSprite = this.add
       .sprite(80, height, `${this.selectedCharacter.id}_idle`)
       .setOrigin(0.5, 1) // Anchor at bottom center
-      .setScale(6) // Increased scale
+      .setScale(charScale)
       .play(`${this.selectedCharacter.id}_idle_anim`);
 
     // Ensure crisp pixel art look
