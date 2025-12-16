@@ -911,7 +911,7 @@ export class GameScene extends Phaser.Scene {
     // After all gifts are dropped, check for floating bubbles
     this.time.delayedCall(numToDestroy * 200 + 100, () => {
       this.removeFloatingBubbles();
-      this.updateScoreDisplay();
+      this.updateUI();
     });
   }
 
