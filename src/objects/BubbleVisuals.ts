@@ -683,8 +683,8 @@ export class BubbleVisuals {
 
     // For basic color bubbles, apply the selected style
     switch (style) {
-      case "pixel":
-        return this.createPixelBubble(scene, x, y, size, color);
+      case "galaxy":
+        return this.createGalaxyBubble(scene, x, y, size, color);
       case "neon":
         return this.createNeonBubble(scene, x, y, size, color);
       case "candy":
@@ -696,9 +696,9 @@ export class BubbleVisuals {
   }
 
   /**
-   * Pixel Art Style - 8-bit retro look
+   * Galaxy Style - Cosmic spheres with stars
    */
-  static createPixelBubble(
+  static createGalaxyBubble(
     scene: Phaser.Scene,
     x: number,
     y: number,
@@ -709,67 +709,63 @@ export class BubbleVisuals {
     const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
     const halfSize = size / 2 - 2;
 
-    // Create pixelated look using rectangles
-    const graphics = scene.add.graphics();
+    // Dark space background
+    const space = scene.add.circle(0, 0, halfSize, 0x0a0a1a);
+    space.setStrokeStyle(2, hexColor);
 
-    // Main color fill (large pixels)
-    graphics.fillStyle(hexColor, 1);
-    const pixelSize = size / 6;
+    // Colored nebula overlay
+    const nebula = scene.add.circle(0, 0, halfSize - 4, hexColor, 0.4);
     
-    // Draw a circle-ish shape with pixels
-    const pixels = [
-      // Row 0 (top)
-      { x: -1, y: -3 }, { x: 0, y: -3 }, { x: 1, y: -3 },
-      // Row 1
-      { x: -2, y: -2 }, { x: -1, y: -2 }, { x: 0, y: -2 }, { x: 1, y: -2 }, { x: 2, y: -2 },
-      // Row 2
-      { x: -3, y: -1 }, { x: -2, y: -1 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 2, y: -1 }, { x: 3, y: -1 },
-      // Row 3 (middle)
-      { x: -3, y: 0 }, { x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 },
-      // Row 4
-      { x: -3, y: 1 }, { x: -2, y: 1 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 },
-      // Row 5
-      { x: -2, y: 2 }, { x: -1, y: 2 }, { x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 },
-      // Row 6 (bottom)
-      { x: -1, y: 3 }, { x: 0, y: 3 }, { x: 1, y: 3 },
+    // Swirling nebula effect
+    scene.tweens.add({
+      targets: nebula,
+      scaleX: { from: 0.9, to: 1.1 },
+      scaleY: { from: 1.1, to: 0.9 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Twinkling stars
+    const stars = scene.add.graphics();
+    const starPositions = [
+      { x: -halfSize / 3, y: -halfSize / 4, size: 2 },
+      { x: halfSize / 4, y: -halfSize / 3, size: 1.5 },
+      { x: -halfSize / 5, y: halfSize / 3, size: 1 },
+      { x: halfSize / 3, y: halfSize / 5, size: 2 },
+      { x: 0, y: -halfSize / 2, size: 1.5 },
+      { x: -halfSize / 2, y: 0, size: 1 },
     ];
 
-    pixels.forEach((p) => {
-      graphics.fillRect(
-        p.x * pixelSize - pixelSize / 2,
-        p.y * pixelSize - pixelSize / 2,
-        pixelSize,
-        pixelSize
-      );
+    starPositions.forEach((star) => {
+      stars.fillStyle(0xffffff, 0.9);
+      stars.fillCircle(star.x, star.y, star.size);
     });
 
-    // Highlight pixels (top-left)
-    graphics.fillStyle(0xffffff, 0.7);
-    [{ x: -1, y: -2 }, { x: -2, y: -1 }].forEach((p) => {
-      graphics.fillRect(
-        p.x * pixelSize - pixelSize / 2,
-        p.y * pixelSize - pixelSize / 2,
-        pixelSize,
-        pixelSize
-      );
+    // Twinkle animation
+    scene.tweens.add({
+      targets: stars,
+      alpha: { from: 0.9, to: 0.3 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
     });
 
-    // Dark border pixels
-    const darkerColor = Phaser.Display.Color.ValueToColor(hexColor).darken(30).color;
-    graphics.fillStyle(darkerColor, 1);
-    [
-      { x: -1, y: 3 }, { x: 0, y: 3 }, { x: 1, y: 3 },
-      { x: 2, y: 2 }, { x: 3, y: 1 }, { x: 3, y: 0 },
-    ].forEach((p) => {
-      graphics.fillRect(
-        p.x * pixelSize - pixelSize / 2,
-        p.y * pixelSize - pixelSize / 2,
-        pixelSize,
-        pixelSize
-      );
+    // Central bright star
+    const centerStar = scene.add.star(0, 0, 4, 2, 5, 0xffffff, 0.8);
+    scene.tweens.add({
+      targets: centerStar,
+      scale: { from: 0.8, to: 1.2 },
+      alpha: { from: 0.8, to: 0.4 },
+      angle: 180,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
     });
 
-    container.add([graphics]);
+    container.add([space, nebula, stars, centerStar]);
     return container;
   }
 

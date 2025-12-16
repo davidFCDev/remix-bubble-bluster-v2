@@ -31,9 +31,9 @@ export const GameSettings = {
       locked: false,
     },
     {
-      id: "pixel",
-      name: "Pixel",
-      description: "8-bit style pixel art bubbles",
+      id: "galaxy",
+      name: "Galaxy",
+      description: "Cosmic spheres with twinkling stars",
       locked: false,
     },
     {
