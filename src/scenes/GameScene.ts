@@ -1529,14 +1529,20 @@ export class GameScene extends Phaser.Scene {
       } else if (bubble.isMagicGift) {
         // Magic Gift (Santa): Transform all bubbles of touched color to random colors
         const neighbors = this.getNeighbors(pos.row, pos.col);
-        let closestNeighbor: { r: number; c: number; color: string } | null = null;
+        let closestNeighbor: { r: number; c: number; color: string } | null =
+          null;
         let minDistance = Infinity;
 
         for (const n of neighbors) {
           if (this.grid[n.r][n.c]) {
             const { x: nx, y: ny } = this.getBubblePos(n.r, n.c);
             const worldNy = ny + this.ceilingOffset + this.GRID_OFFSET_Y;
-            const dist = Phaser.Math.Distance.Between(bubble.x, bubble.y, nx, worldNy);
+            const dist = Phaser.Math.Distance.Between(
+              bubble.x,
+              bubble.y,
+              nx,
+              worldNy
+            );
             if (dist < minDistance) {
               minDistance = dist;
               closestNeighbor = { r: n.r, c: n.c, color: this.grid[n.r][n.c]! };
@@ -1547,17 +1553,29 @@ export class GameScene extends Phaser.Scene {
         if (closestNeighbor && closestNeighbor.color) {
           const targetColor = closestNeighbor.color;
           // Special bubbles are immune
-          if (targetColor !== "ANCHOR" && targetColor !== "SLIME" && targetColor !== "STOP" && targetColor !== "BOMB" && targetColor !== "STONE") {
+          if (
+            targetColor !== "ANCHOR" &&
+            targetColor !== "SLIME" &&
+            targetColor !== "STOP" &&
+            targetColor !== "BOMB" &&
+            targetColor !== "STONE"
+          ) {
             const transformedPositions: { r: number; c: number }[] = [];
-            const availableColors = GameSettings.colors.all.filter(c => c !== targetColor);
+            const availableColors = GameSettings.colors.all.filter(
+              (c) => c !== targetColor
+            );
 
             // Transform all bubbles of target color
             for (let r = 0; r < this.GRID_HEIGHT; r++) {
-              const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+              const maxCols =
+                r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
               for (let c = 0; c < maxCols; c++) {
                 if (this.grid[r][c] === targetColor) {
                   // Pick random new color (not the original)
-                  const newColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+                  const newColor =
+                    availableColors[
+                      Math.floor(Math.random() * availableColors.length)
+                    ];
                   this.grid[r][c] = newColor;
                   transformedPositions.push({ r, c });
 
@@ -1567,7 +1585,10 @@ export class GameScene extends Phaser.Scene {
                     const spriteX = oldSprite.x;
                     const spriteY = oldSprite.y;
                     // Add sparkle effect before destroying
-                    this.createGiftParticles(spriteX + this.gameContainer.x, spriteY + this.gameContainer.y);
+                    this.createGiftParticles(
+                      spriteX + this.gameContainer.x,
+                      spriteY + this.gameContainer.y
+                    );
                     oldSprite.destroy();
                     this.bubbleSprites[r][c] = null;
                     // Create new sprite with new color
@@ -1720,7 +1741,7 @@ export class GameScene extends Phaser.Scene {
       "MEGA COMBO!": ["HO-HO-HO!", "SANTA COMBO!", "GIFT TIME!"],
       "BOOM!": ["JINGLE BOOM!", "HO-HO BOOM!", "FESTIVE!"],
     };
-    
+
     if (this.selectedCharacter?.id === "Santa" && santaTexts[originalText]) {
       const options = santaTexts[originalText];
       return options[Math.floor(Math.random() * options.length)];
@@ -2561,52 +2582,95 @@ export class GameScene extends Phaser.Scene {
 
       container.add([glow, crystal, core]);
     } else if (charId === "Santa") {
-      // Magic Gift: Golden Present Sphere
-      // 1. Festive Glow (Golden)
-      const glow = this.add.circle(0, 0, size / 1.2, 0xffd700, 0.6);
+      // Magic Gift: Enchanted Snow Globe / Christmas Ornament
+      const halfSize = size / 2;
+
+      // 1. Outer magical aura (rainbow/aurora effect)
+      const aura = this.add.graphics();
+      aura.lineStyle(3, 0xff0000, 0.6);
+      aura.strokeCircle(0, 0, halfSize + 8);
+      aura.lineStyle(2, 0x00ff00, 0.4);
+      aura.strokeCircle(0, 0, halfSize + 12);
       this.tweens.add({
-        targets: glow,
-        alpha: 0.3,
-        scale: 1.4,
-        yoyo: true,
+        targets: aura,
+        rotation: Math.PI * 2,
+        duration: 3000,
         repeat: -1,
-        duration: 500,
+        ease: "Linear",
       });
 
-      // 2. Main Body (Golden)
-      const bg = this.add.circle(0, 0, size / 2, 0xffd700);
-      bg.setStrokeStyle(2, 0xff0000); // Red ribbon stroke
+      // 2. Glass sphere (gradient effect with multiple layers)
+      const outerGlass = this.add.circle(0, 0, halfSize + 2, 0x1a472a, 0.8); // Dark green
+      outerGlass.setStrokeStyle(3, 0xffd700); // Gold border
+      
+      const innerGlass = this.add.circle(0, 0, halfSize - 2, 0x2d5a3f, 0.9); // Forest green
+      
+      // 3. Shine/reflection (glass effect)
+      const shine = this.add.graphics();
+      shine.fillStyle(0xffffff, 0.7);
+      shine.fillEllipse(-halfSize / 3, -halfSize / 3, 8, 12);
+      shine.fillStyle(0xffffff, 0.4);
+      shine.fillEllipse(-halfSize / 4, -halfSize / 4 + 8, 4, 6);
 
-      // 3. Gift Ribbon (Cross pattern)
-      const ribbon = this.add.graphics();
-      ribbon.fillStyle(0xff0000, 1); // Red ribbon
-      ribbon.fillRect(-size / 2, -3, size, 6); // Horizontal ribbon
-      ribbon.fillRect(-3, -size / 2, 6, size); // Vertical ribbon
-
-      // 4. Bow on top
-      const bow = this.add.graphics();
-      bow.fillStyle(0xff0000, 1);
-      bow.fillCircle(-6, -size / 4, 5);
-      bow.fillCircle(6, -size / 4, 5);
-      bow.fillCircle(0, -size / 4, 4);
-
-      // 5. Sparkles
-      const sparkles = this.add.graphics();
-      sparkles.fillStyle(0xffffff, 0.9);
-      for (let i = 0; i < 4; i++) {
-        const angle = (i / 4) * Math.PI * 2;
-        const dist = size / 2 + 5;
-        sparkles.fillCircle(Math.cos(angle) * dist, Math.sin(angle) * dist, 2);
+      // 4. Inner star (Christmas star)
+      const star = this.add.graphics();
+      star.fillStyle(0xffd700, 1); // Gold star
+      const starPoints = 5;
+      const outerRadius = halfSize / 2.5;
+      const innerRadius = halfSize / 5;
+      star.beginPath();
+      for (let i = 0; i < starPoints * 2; i++) {
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const angle = (i * Math.PI) / starPoints - Math.PI / 2;
+        if (i === 0) {
+          star.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        } else {
+          star.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        }
       }
+      star.closePath();
+      star.fillPath();
+      
+      // Star glow
       this.tweens.add({
-        targets: sparkles,
-        alpha: 0.3,
+        targets: star,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        alpha: 0.7,
         yoyo: true,
         repeat: -1,
-        duration: 300,
+        duration: 400,
+        ease: "Sine.easeInOut",
       });
 
-      container.add([glow, bg, ribbon, bow, sparkles]);
+      // 5. Floating snowflakes inside
+      const snowflakes = this.add.graphics();
+      snowflakes.fillStyle(0xffffff, 0.9);
+      const snowPositions = [
+        { x: -8, y: -5 }, { x: 10, y: 8 }, { x: -5, y: 12 },
+        { x: 8, y: -10 }, { x: -12, y: 3 }, { x: 3, y: -8 }
+      ];
+      snowPositions.forEach(pos => {
+        snowflakes.fillCircle(pos.x, pos.y, 2);
+      });
+      this.tweens.add({
+        targets: snowflakes,
+        y: 3,
+        alpha: 0.5,
+        yoyo: true,
+        repeat: -1,
+        duration: 800,
+        ease: "Sine.easeInOut",
+      });
+
+      // 6. Ornament cap (top)
+      const cap = this.add.graphics();
+      cap.fillStyle(0xffd700, 1); // Gold cap
+      cap.fillRect(-6, -halfSize - 4, 12, 8);
+      cap.fillStyle(0xc0c0c0, 1); // Silver ring
+      cap.fillCircle(0, -halfSize - 6, 4);
+
+      container.add([aura, outerGlass, innerGlass, shine, star, snowflakes, cap]);
     }
   }
 
