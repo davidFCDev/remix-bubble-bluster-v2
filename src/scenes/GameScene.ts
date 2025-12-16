@@ -68,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private skillButtonPressed: boolean = false; // Track if skill button was pressed
   private lastTouchX: number = 0; // Track last touch X position for relative aiming
   private recentColors: string[] = []; // Track recent bubble colors to prevent 3+ consecutive
+  private christmasMode: boolean = false; // Christmas mode flag
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -82,6 +83,7 @@ export class GameScene extends Phaser.Scene {
 
   init(data: any) {
     this.selectedCharacter = data.character || GameSettings.characters[0];
+    this.christmasMode = data.christmasMode || false;
     this.score = 0;
     this.level = 1;
     this.gameOver = false;
@@ -97,6 +99,9 @@ export class GameScene extends Phaser.Scene {
     this.canShoot = true;
     this.levelTime = GameSettings.gameplay.levelTime;
     this.recentColors = []; // Reset recent colors tracking
+    // Reset music playlist when mode changes
+    GameScene.musicPlaylist = [];
+    GameScene.currentPlaylistIndex = 0;
   }
 
   create() {
@@ -108,8 +113,9 @@ export class GameScene extends Phaser.Scene {
     this.loadGameState();
 
     // Background
+    const bgKey = this.christmasMode ? "bg_christmas_0" : "bg_level_0";
     this.bgImage = this.add
-      .image(width / 2, height / 2, "bg_level_0") // Default initial
+      .image(width / 2, height / 2, bgKey)
       .setDisplaySize(width, height);
 
     // Background Overlay
@@ -149,14 +155,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     // UI Header (Retro Style - Single Row)
-    // Dark gray background
-    this.add.rectangle(width / 2, 40, width, 80, 0x111111, 1).setOrigin(0.5);
+    // Get theme colors
+    const theme = this.christmasMode ? GameSettings.themes.christmas : GameSettings.themes.normal;
+    
+    // Dark gray background (or christmas green)
+    this.add.rectangle(width / 2, 40, width, 80, theme.headerBg, 1).setOrigin(0.5);
 
     const headerY = 40;
     const fontStyle = {
       fontFamily: "Pixelify Sans",
       fontSize: "32px", // Increased from 24px
-      color: "#B7FF00", // Neon Green
+      color: theme.primary, // Theme color
       align: "center",
       fontStyle: "bold",
     };
@@ -257,8 +266,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawLimitLine() {
+    const lineColor = this.christmasMode ? 0xff0000 : 0xb7ff00; // Red for Christmas, Neon Green otherwise
     this.limitLineGraphics.clear();
-    this.limitLineGraphics.lineStyle(4, 0xb7ff00, 1); // Neon Green, thicker
+    this.limitLineGraphics.lineStyle(4, lineColor, 1);
     this.limitLineGraphics.beginPath();
     this.limitLineGraphics.moveTo(0, this.LIMIT_LINE_Y);
     this.limitLineGraphics.lineTo(this.cameras.main.width, this.LIMIT_LINE_Y);
@@ -267,6 +277,9 @@ export class GameScene extends Phaser.Scene {
 
   createSkillButton() {
     const { width, height } = this.cameras.main;
+    const theme = this.christmasMode ? GameSettings.themes.christmas : GameSettings.themes.normal;
+    const btnColor = this.christmasMode ? 0xff0000 : 0xb7ff00;
+    
     // Position skill button to the right of the launcher (center)
     // Launcher is at width/2. Let's put it at width/2 + 160 (further away)
     const btnX = width / 2 + 160;
@@ -275,14 +288,14 @@ export class GameScene extends Phaser.Scene {
     const btn = this.add.container(btnX, btnY);
 
     // Neon Style Button - Larger
-    const bg = this.add.circle(0, 0, 45, 0x000000).setStrokeStyle(4, 0xb7ff00);
-    const inner = this.add.circle(0, 0, 36, 0xb7ff00, 0.2);
+    const bg = this.add.circle(0, 0, 45, 0x000000).setStrokeStyle(4, btnColor);
+    const inner = this.add.circle(0, 0, 36, btnColor, 0.2);
 
     const text = this.add
       .text(0, 0, "SKILL", {
         fontFamily: "Pixelify Sans",
         fontSize: "22px",
-        color: "#B7FF00",
+        color: theme.primary,
         fontStyle: "bold",
       })
       .setOrigin(0.5);
@@ -308,9 +321,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   playBackgroundMusic() {
+    // Determine which music list to use
+    const musicList = this.christmasMode 
+      ? GameSettings.assets.christmasMusic 
+      : GameSettings.assets.music;
+    const musicPrefix = this.christmasMode ? "christmas_bgm_" : "bgm_";
+
     // Initialize playlist if empty
     if (GameScene.musicPlaylist.length === 0) {
-      const indices = GameSettings.assets.music.map((_, i) => i);
+      const indices = musicList.map((_, i) => i);
       GameScene.musicPlaylist = Phaser.Utils.Array.Shuffle(indices);
       GameScene.currentPlaylistIndex = 0;
     }
@@ -320,7 +339,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const index = GameScene.musicPlaylist[GameScene.currentPlaylistIndex];
-    const musicKey = `bgm_${index}`;
+    const musicKey = `${musicPrefix}${index}`;
 
     this.currentMusic = this.sound.add(musicKey, {
       volume: 0.3,
@@ -338,6 +357,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   setRandomBackground() {
+    const bgPrefix = this.christmasMode ? "bg_christmas_" : "bg_level_";
     let newIndex;
     // Try to pick a different background, but if it's the first time (lastBgIndex -1), just pick any.
     // We have 3 backgrounds: 0, 1, 2
@@ -350,7 +370,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.lastBgIndex = newIndex;
-    this.bgImage.setTexture(`bg_level_${newIndex}`);
+    this.bgImage.setTexture(`${bgPrefix}${newIndex}`);
 
     const { width, height } = this.cameras.main;
     this.bgImage.setDisplaySize(width, height);

@@ -9,12 +9,18 @@ export class CharacterSelectScene extends Phaser.Scene {
   private charPreviewSprite!: Phaser.GameObjects.Sprite;
   private charPreviewContainer!: Phaser.GameObjects.Container;
   private selectBtn!: Phaser.GameObjects.Container;
+  private christmasMode: boolean = false;
 
   constructor() {
     super("CharacterSelectScene");
   }
 
+  init(data: any) {
+    this.christmasMode = data?.christmasMode || false;
+  }
+
   create() {
+    const theme = this.christmasMode ? GameSettings.themes.christmas : GameSettings.themes.normal;
     const { width, height } = this.cameras.main;
 
     // Create Animations first
@@ -28,7 +34,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       .text(width / 2, height * 0.1, "CHOOSE YOUR\nCHARACTER", {
         fontFamily: "Pixelify Sans",
         fontSize: "48px",
-        color: "#B7FF00", // Neon Green
+        color: theme.primary,
         fontStyle: "bold",
         align: "center",
         stroke: "#000000",
@@ -262,6 +268,6 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   selectCharacter() {
     const selectedChar = GameSettings.characters[this.currentIndex];
-    this.scene.start("GameScene", { character: selectedChar });
+    this.scene.start("GameScene", { character: selectedChar, christmasMode: this.christmasMode });
   }
 }
