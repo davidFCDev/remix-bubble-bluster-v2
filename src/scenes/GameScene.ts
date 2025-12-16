@@ -852,11 +852,11 @@ export class GameScene extends Phaser.Scene {
       this.currentBubble.color = "#00FFFF"; // Cyan/Ice color
       this.applySkillVisuals(this.currentBubble, "Whitey");
       // this.playSound("sfx_special_whitey"); // Removed specific sound for now
-    } else if (this.selectedCharacter.id === "Santa") {
-      // Magic Gift: Transform all bubbles of touched color
+    } else if (this.selectedCharacter.id === "WitchKitty") {
+      // Hex Bubble: Transform all bubbles of touched color
       this.currentBubble.isMagicGift = true;
-      this.currentBubble.color = "#FFD700"; // Golden color
-      this.applySkillVisuals(this.currentBubble, "Santa");
+      this.currentBubble.color = "#9932CC"; // Dark orchid purple
+      this.applySkillVisuals(this.currentBubble, "WitchKitty");
     }
 
     this.abilityAvailable = false;
@@ -864,7 +864,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   createGiftParticles(x: number, y: number) {
-    // Create festive particle effect for Santa's gift
+    // Create magical particle effect for Witch Kitty's hex
     const colors = [0xff0000, 0x00ff00, 0xffd700, 0xffffff]; // Red, Green, Gold, White
 
     for (let i = 0; i < 8; i++) {
@@ -1049,7 +1049,7 @@ export class GameScene extends Phaser.Scene {
               color = 0xccffff; // Ice Blue
               size = 4;
             } else if (bubble.isMagicGift) {
-              // Santa: Gold/Red festive trail
+              // WitchKitty: Purple/Green magical trail
               color = Math.random() > 0.5 ? 0xffd700 : 0xff0000;
               size = 4;
               duration = 400;
@@ -1527,7 +1527,7 @@ export class GameScene extends Phaser.Scene {
         this.removeFloatingBubbles();
         this.updateUI();
       } else if (bubble.isMagicGift) {
-        // Magic Gift (Santa): Transform all bubbles of touched color to random colors
+        // Hex Bubble (WitchKitty): Transform all bubbles of touched color to random colors
         const neighbors = this.getNeighbors(pos.row, pos.col);
         let closestNeighbor: { r: number; c: number; color: string } | null =
           null;
@@ -1734,23 +1734,23 @@ export class GameScene extends Phaser.Scene {
     return col >= 0 && col < maxCols;
   }
 
-  getSantaSpeech(originalText: string): string {
-    // Map normal speech to Santa's festive versions
-    const santaTexts: { [key: string]: string[] } = {
-      "NICE!": ["HO-HO!", "JOLLY!", "MERRY!"],
-      "MEGA COMBO!": ["HO-HO-HO!", "SANTA COMBO!", "GIFT TIME!"],
-      "BOOM!": ["JINGLE BOOM!", "HO-HO BOOM!", "FESTIVE!"],
+  getWitchKittySpeech(originalText: string): string {
+    // Map normal speech to Witch Kitty's magical versions
+    const kittyTexts: { [key: string]: string[] } = {
+      "NICE!": ["MEOW!", "PURRFECT!", "MAGICAL!"],
+      "MEGA COMBO!": ["MEOWGICAL!", "WITCHY!", "SPELL TIME!"],
+      "BOOM!": ["HEX BOOM!", "CURSED!", "BEWITCHED!"],
     };
 
-    if (this.selectedCharacter?.id === "Santa" && santaTexts[originalText]) {
-      const options = santaTexts[originalText];
+    if (this.selectedCharacter?.id === "WitchKitty" && kittyTexts[originalText]) {
+      const options = kittyTexts[originalText];
       return options[Math.floor(Math.random() * options.length)];
     }
     return originalText;
   }
 
   showCharacterSpeech(text: string) {
-    const finalText = this.getSantaSpeech(text);
+    const finalText = this.getWitchKittySpeech(text);
     if (finalText === this.lastSpeechText) return;
     this.lastSpeechText = finalText;
 
@@ -2581,15 +2581,15 @@ export class GameScene extends Phaser.Scene {
       // For now, let's make it a spinning crystal.
 
       container.add([glow, crystal, core]);
-    } else if (charId === "Santa") {
-      // Magic Gift: Enchanted Snow Globe / Christmas Ornament
+    } else if (charId === "WitchKitty") {
+      // Hex Bubble: Mystical cursed orb with witch vibes
       const halfSize = size / 2;
 
-      // 1. Outer magical aura (rainbow/aurora effect)
+      // 1. Outer magical aura (purple/green witch effect)
       const aura = this.add.graphics();
-      aura.lineStyle(3, 0xff0000, 0.6);
+      aura.lineStyle(3, 0x9932cc, 0.6); // Dark orchid purple
       aura.strokeCircle(0, 0, halfSize + 8);
-      aura.lineStyle(2, 0x00ff00, 0.4);
+      aura.lineStyle(2, 0x00ff88, 0.4); // Witch green
       aura.strokeCircle(0, 0, halfSize + 12);
       this.tweens.add({
         targets: aura,
@@ -2599,13 +2599,13 @@ export class GameScene extends Phaser.Scene {
         ease: "Linear",
       });
 
-      // 2. Glass sphere (gradient effect with multiple layers)
-      const outerGlass = this.add.circle(0, 0, halfSize + 2, 0x1a472a, 0.8); // Dark green
-      outerGlass.setStrokeStyle(3, 0xffd700); // Gold border
+      // 2. Mystical sphere (dark purple gradient)
+      const outerGlass = this.add.circle(0, 0, halfSize + 2, 0x4b0082, 0.8); // Indigo
+      outerGlass.setStrokeStyle(3, 0x00ff88); // Witch green border
 
-      const innerGlass = this.add.circle(0, 0, halfSize - 2, 0x2d5a3f, 0.9); // Forest green
+      const innerGlass = this.add.circle(0, 0, halfSize - 2, 0x8b008b, 0.9); // Dark magenta
 
-      // 3. Shine/reflection (glass effect)
+      // 3. Shine/reflection (mystical effect)
       const shine = this.add.graphics();
       shine.fillStyle(0xffffff, 0.7);
       shine.fillEllipse(-halfSize / 3, -halfSize / 3, 8, 12);

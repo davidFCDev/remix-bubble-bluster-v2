@@ -69,20 +69,20 @@ export const GameSettings = {
         "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/Owlet_Monster_Attack1_4-IPV3tIX6BdetCSKYUHviJxvMpBsD50.png?UTIu",
     },
     {
-      id: "Santa",
-      name: "Santa",
-      lore: "The jolly gift-giver from the North Pole, spreading holiday cheer one bubble at a time!",
+      id: "WitchKitty",
+      name: "Witch Kitty",
+      lore: "A mystical feline sorceress from the Enchanted Forest, casting spells with a flick of her tail!",
       skillDesc:
-        "Magic Gift: A golden present that transforms ALL bubbles of the touched color into random NEW colors!",
+        "Hex Bubble: A cursed orb that transforms ALL bubbles of the touched color into random NEW colors!",
       hasSkill: true,
       spriteIdle:
-        "https://remix.gg/blob/Y58Z5vSLnB41/santa-LrH37lKKrOuagQqChEa8YtehtKrSpo.webp?Le8q",
+        "https://remix.gg/blob/Y58Z5vSLnB41/kitty-Q0mEbFqtopjlLbhpBfKDhqZoiaAblk.webp?DbsX",
       spriteAttack:
-        "https://remix.gg/blob/Y58Z5vSLnB41/santa-LrH37lKKrOuagQqChEa8YtehtKrSpo.webp?Le8q",
+        "https://remix.gg/blob/Y58Z5vSLnB41/kitty-Q0mEbFqtopjlLbhpBfKDhqZoiaAblk.webp?DbsX",
       frameConfig: {
-        frameWidth: 32,
-        frameHeight: 32,
-        frameCount: 6,
+        frameWidth: 64,
+        frameHeight: 64,
+        frameCount: 12,
       },
     },
   ],
