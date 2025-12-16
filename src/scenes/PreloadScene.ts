@@ -51,7 +51,7 @@ export class PreloadScene extends Phaser.Scene {
     GameSettings.characters.forEach((char: any) => {
       const frameWidth = char.frameConfig?.frameWidth || 32;
       const frameHeight = char.frameConfig?.frameHeight || 32;
-      
+
       this.load.spritesheet(`${char.id}_idle`, char.spriteIdle, {
         frameWidth: frameWidth,
         frameHeight: frameHeight,
