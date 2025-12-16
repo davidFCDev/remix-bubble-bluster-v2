@@ -110,31 +110,11 @@ export const GameSettings = {
         "https://remix.gg/blob/Y58Z5vSLnB41/skill-tXdETS9gksWtrAnbrxMUPME9FbNU8u.mp3?A634",
       level_complete:
         "https://remix.gg/blob/Y58Z5vSLnB41/success-AW3cXCtRKCkTE07nZXOFjdtjCoMHCh.mp3?uqct",
-    },
-    // Christmas Mode Assets
-    christmasBackgrounds: [
-      "https://remix.gg/blob/Y58Z5vSLnB41/snow1-RK9b7nOkBydbMIhdvtb4fvTKnE4RXw.webp?CkHa",
-      "https://remix.gg/blob/Y58Z5vSLnB41/snow2-zwxE9lXHvnjC83FoKx3IL2WO2nhXXv.webp?mUmt",
-      "https://remix.gg/blob/Y58Z5vSLnB41/snow3-hw0wpG3osUB5wXO4R0bj34o5BPNvFD.webp?LNNa",
-    ],
-    christmasMusic: [
-      "https://remix.gg/blob/Y58Z5vSLnB41/christmas1-5uqqdtsbOcfcez06jFEugJ72Ka9tg6.mp3?V7rn",
-      "https://remix.gg/blob/Y58Z5vSLnB41/christmas2-rk1GwerY6W2gttmHp12fje3AQEUeMc.mp3?RWEI",
-      "https://remix.gg/blob/Y58Z5vSLnB41/christmas3-xtNKb3UYMV5QFtUGqIHrbuWr7IBP77.mp3?PEQB",
-      "https://remix.gg/blob/Y58Z5vSLnB41/christmas4-Ffx2qTOZCOQ6f0W0aYjsZjwue1r2fV.mp3?MM08",
-    ],
-  },
-  // Theme colors
-  themes: {
-    normal: {
-      primary: "#B7FF00",
-      secondary: "#FFFFFF",
-      headerBg: 0x111111,
-    },
-    christmas: {
-      primary: "#FF0000",
-      secondary: "#00FF00",
-      headerBg: 0x1a472a,
+      // shoot: "path/to/shoot.mp3",
+      // special_pinky: "path/to/pinky.mp3",
+      // special_bluey: "path/to/bluey.mp3",
+      // special_whitey: "path/to/whitey.mp3",
+      // game_over: "path/to/game_over.mp3",
     },
   },
 };

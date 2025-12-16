@@ -67,14 +67,6 @@ export class PreloadScene extends Phaser.Scene {
       this.load.audio(`bgm_${index}`, { url: track, type: "mp3" });
     });
 
-    // Load Christmas Assets
-    GameSettings.assets.christmasBackgrounds.forEach((bg, index) => {
-      this.load.image(`bg_christmas_${index}`, bg);
-    });
-    GameSettings.assets.christmasMusic.forEach((track, index) => {
-      this.load.audio(`christmas_bgm_${index}`, { url: track, type: "mp3" });
-    });
-
     // Load SFX
     Object.entries(GameSettings.assets.sfx).forEach(([key, url]) => {
       // Only load if url is valid (not a placeholder comment if we had any, but here we have real urls)
@@ -366,8 +358,9 @@ export class PreloadScene extends Phaser.Scene {
       window.FarcadeSDK.singlePlayer.actions.ready();
 
       // Handle mute/unmute from SDK
-      window.FarcadeSDK.on("toggle_mute", (data: { isMuted: boolean }) => {
-        this.sound.mute = data.isMuted;
+      window.FarcadeSDK.on("toggle_mute", (data: unknown) => {
+        const muteData = data as { isMuted: boolean };
+        this.sound.mute = muteData.isMuted;
       });
     }
 

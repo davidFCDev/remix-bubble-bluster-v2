@@ -92,70 +92,7 @@ export class StartScene extends Phaser.Scene {
 
     startBtnContainer.on("pointerdown", () => {
       this.sound.play("sfx_button");
-      this.scene.start("CharacterSelectScene", { christmasMode: false });
-    });
-
-    // Christmas Mode Button
-    const christmasBtnY = btnY + 100;
-    const christmasBtnContainer = this.add.container(width / 2, christmasBtnY);
-
-    // Christmas Button Shadow
-    const christmasBtnShadow = this.add.graphics();
-    christmasBtnShadow.fillStyle(0x000000, 1);
-    christmasBtnShadow.fillRoundedRect(
-      -btnWidth / 2 + 8,
-      -btnHeight / 2 + 8,
-      btnWidth,
-      btnHeight,
-      15
-    );
-
-    // Christmas Button Background (Red with green border)
-    const christmasBtnBg = this.add.graphics();
-    christmasBtnBg.fillStyle(0xcc0000, 1); // Christmas Red
-    christmasBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      15
-    );
-    christmasBtnBg.lineStyle(4, 0x00aa00); // Green border
-    christmasBtnBg.strokeRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      15
-    );
-
-    const christmasBtnText = this.add
-      .text(0, 0, "🎄 CHRISTMAS 🎅", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#FFFFFF",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    christmasBtnContainer.add([christmasBtnShadow, christmasBtnBg, christmasBtnText]);
-
-    // Make interactive
-    const christmasHitArea = new Phaser.Geom.Rectangle(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight
-    );
-    christmasBtnContainer.setInteractive({
-      hitArea: christmasHitArea,
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
-
-    christmasBtnContainer.on("pointerdown", () => {
-      this.sound.play("sfx_button");
-      this.scene.start("CharacterSelectScene", { christmasMode: true });
+      this.scene.start("CharacterSelectScene");
     });
 
     // Instructions Overlay
