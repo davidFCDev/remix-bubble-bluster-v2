@@ -864,9 +864,9 @@ export class GameScene extends Phaser.Scene {
     this.skillBtn.setAlpha(0.5);
   }
 
-  createGiftParticles(x: number, y: number) {
+  createHexParticles(x: number, y: number) {
     // Create magical particle effect for Witch Kitty's hex
-    const colors = [0xff0000, 0x00ff00, 0xffd700, 0xffffff]; // Red, Green, Gold, White
+    const colors = [0x9932cc, 0x00ff88, 0x8b008b, 0xffffff]; // Purple, Witch Green, Magenta, White
 
     for (let i = 0; i < 8; i++) {
       const particle = this.add.circle(
@@ -1586,7 +1586,7 @@ export class GameScene extends Phaser.Scene {
                     const spriteX = oldSprite.x;
                     const spriteY = oldSprite.y;
                     // Add sparkle effect before destroying
-                    this.createGiftParticles(
+                    this.createHexParticles(
                       spriteX + this.gameContainer.x,
                       spriteY + this.gameContainer.y
                     );
@@ -1743,7 +1743,10 @@ export class GameScene extends Phaser.Scene {
       "BOOM!": ["HEX BOOM!", "CURSED!", "BEWITCHED!"],
     };
 
-    if (this.selectedCharacter?.id === "WitchKitty" && kittyTexts[originalText]) {
+    if (
+      this.selectedCharacter?.id === "WitchKitty" &&
+      kittyTexts[originalText]
+    ) {
       const options = kittyTexts[originalText];
       return options[Math.floor(Math.random() * options.length)];
     }
@@ -2613,76 +2616,87 @@ export class GameScene extends Phaser.Scene {
       shine.fillStyle(0xffffff, 0.4);
       shine.fillEllipse(-halfSize / 4, -halfSize / 4 + 8, 4, 6);
 
-      // 4. Inner star (Christmas star)
-      const star = this.add.graphics();
-      star.fillStyle(0xffd700, 1); // Gold star
-      const starPoints = 5;
-      const outerRadius = halfSize / 2.5;
-      const innerRadius = halfSize / 5;
-      star.beginPath();
-      for (let i = 0; i < starPoints * 2; i++) {
-        const radius = i % 2 === 0 ? outerRadius : innerRadius;
-        const angle = (i * Math.PI) / starPoints - Math.PI / 2;
+      // 4. Inner pentagram (witch symbol)
+      const pentagram = this.add.graphics();
+      pentagram.lineStyle(2, 0x00ff88, 0.9); // Witch green
+      const points = 5;
+      const outerRadius = halfSize / 2.2;
+      pentagram.beginPath();
+      for (let i = 0; i < points; i++) {
+        const angle = (i * 4 * Math.PI) / points - Math.PI / 2;
+        const x = Math.cos(angle) * outerRadius;
+        const y = Math.sin(angle) * outerRadius;
         if (i === 0) {
-          star.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          pentagram.moveTo(x, y);
         } else {
-          star.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          pentagram.lineTo(x, y);
         }
       }
-      star.closePath();
-      star.fillPath();
+      pentagram.closePath();
+      pentagram.strokePath();
 
-      // Star glow
+      // Pentagram glow
       this.tweens.add({
-        targets: star,
-        scaleX: 1.2,
-        scaleY: 1.2,
-        alpha: 0.7,
-        yoyo: true,
-        repeat: -1,
-        duration: 400,
-        ease: "Sine.easeInOut",
-      });
-
-      // 5. Floating snowflakes inside
-      const snowflakes = this.add.graphics();
-      snowflakes.fillStyle(0xffffff, 0.9);
-      const snowPositions = [
-        { x: -8, y: -5 },
-        { x: 10, y: 8 },
-        { x: -5, y: 12 },
-        { x: 8, y: -10 },
-        { x: -12, y: 3 },
-        { x: 3, y: -8 },
-      ];
-      snowPositions.forEach((pos) => {
-        snowflakes.fillCircle(pos.x, pos.y, 2);
-      });
-      this.tweens.add({
-        targets: snowflakes,
-        y: 3,
+        targets: pentagram,
+        scaleX: 1.15,
+        scaleY: 1.15,
         alpha: 0.5,
         yoyo: true,
         repeat: -1,
-        duration: 800,
+        duration: 500,
         ease: "Sine.easeInOut",
       });
 
-      // 6. Ornament cap (top)
-      const cap = this.add.graphics();
-      cap.fillStyle(0xffd700, 1); // Gold cap
-      cap.fillRect(-6, -halfSize - 4, 12, 8);
-      cap.fillStyle(0xc0c0c0, 1); // Silver ring
-      cap.fillCircle(0, -halfSize - 6, 4);
+      // 5. Floating magic sparkles inside
+      const sparkles = this.add.graphics();
+      const sparklePositions = [
+        { x: -8, y: -5, color: 0x00ff88 },
+        { x: 10, y: 8, color: 0x9932cc },
+        { x: -5, y: 12, color: 0x00ff88 },
+        { x: 8, y: -10, color: 0x9932cc },
+        { x: -12, y: 3, color: 0xffffff },
+        { x: 3, y: -8, color: 0xffffff },
+      ];
+      sparklePositions.forEach((pos) => {
+        sparkles.fillStyle(pos.color, 0.9);
+        sparkles.fillCircle(pos.x, pos.y, 2);
+      });
+      this.tweens.add({
+        targets: sparkles,
+        rotation: Math.PI * 2,
+        alpha: 0.4,
+        yoyo: true,
+        repeat: -1,
+        duration: 1200,
+        ease: "Sine.easeInOut",
+      });
+
+      // 6. Cat ear silhouettes (witch kitty theme)
+      const ears = this.add.graphics();
+      ears.fillStyle(0x9932cc, 0.8); // Purple ears
+      // Left ear
+      ears.beginPath();
+      ears.moveTo(-halfSize + 2, -halfSize + 8);
+      ears.lineTo(-halfSize + 10, -halfSize - 8);
+      ears.lineTo(-halfSize + 18, -halfSize + 8);
+      ears.closePath();
+      ears.fillPath();
+      // Right ear
+      ears.beginPath();
+      ears.moveTo(halfSize - 18, -halfSize + 8);
+      ears.lineTo(halfSize - 10, -halfSize - 8);
+      ears.lineTo(halfSize - 2, -halfSize + 8);
+      ears.closePath();
+      ears.fillPath();
 
       container.add([
         aura,
         outerGlass,
         innerGlass,
         shine,
-        star,
-        snowflakes,
-        cap,
+        pentagram,
+        sparkles,
+        ears,
       ]);
     }
   }

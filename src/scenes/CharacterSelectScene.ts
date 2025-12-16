@@ -65,7 +65,9 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Character Preview Sprite
     const initialChar = GameSettings.characters[0];
-    const initialScale = initialChar.frameConfig?.scale ? initialChar.frameConfig.scale * 1.17 : 7;
+    const initialScale = initialChar.frameConfig?.scale
+      ? initialChar.frameConfig.scale * 1.17
+      : 7;
     this.charPreviewSprite = this.add
       .sprite(0, -cardHeight * 0.3, `${initialChar.id}_idle`) // Moved up more
       .setScale(initialScale);
@@ -255,7 +257,9 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     this.charPreviewSprite.setTexture(`${char.id}_idle`);
     // Adjust scale based on character frame size
-    const charScale = char.frameConfig?.scale ? char.frameConfig.scale * 1.17 : 7;
+    const charScale = char.frameConfig?.scale
+      ? char.frameConfig.scale * 1.17
+      : 7;
     this.charPreviewSprite.setScale(charScale);
     if (this.charPreviewSprite.texture) {
       this.charPreviewSprite.texture.setFilter(
