@@ -2402,10 +2402,15 @@ export class GameScene extends Phaser.Scene {
 
     this.nextBubblePreviews.forEach((preview, idx) => {
       if (this.nextBubbles[idx]) {
-        // Update color of the circle inside the container
-        const circle = (preview as any).list[0] as Phaser.GameObjects.Arc;
-        circle.setFillStyle(
-          Phaser.Display.Color.HexStringToColor(this.nextBubbles[idx]).color
+        // Destroy old preview and create new one with correct color/style
+        const x = preview.x;
+        const y = preview.y;
+        preview.destroy();
+        this.nextBubblePreviews[idx] = this.createBubbleVisual(
+          x,
+          y,
+          35,
+          this.nextBubbles[idx]
         );
       }
     });
