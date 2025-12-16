@@ -105,11 +105,23 @@ export class BubbleStyleScene extends Phaser.Scene {
     const selectBtn = this.add.container(width / 2, btnY);
     const btnShadow = this.add.graphics();
     btnShadow.fillStyle(0x000000, 1);
-    btnShadow.fillRoundedRect(-btnWidth / 2 + 6, -btnHeight / 2 + 6, btnWidth, btnHeight, 12);
+    btnShadow.fillRoundedRect(
+      -btnWidth / 2 + 6,
+      -btnHeight / 2 + 6,
+      btnWidth,
+      btnHeight,
+      12
+    );
 
     const btnBg = this.add.graphics();
     btnBg.fillStyle(0xb7ff00, 1);
-    btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 12);
+    btnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      12
+    );
 
     const btnText = this.add
       .text(0, 0, "SELECT", {
@@ -122,7 +134,12 @@ export class BubbleStyleScene extends Phaser.Scene {
 
     selectBtn.add([btnShadow, btnBg, btnText]);
     selectBtn.setInteractive({
-      hitArea: new Phaser.Geom.Rectangle(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight),
+      hitArea: new Phaser.Geom.Rectangle(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
+      ),
       hitAreaCallback: Phaser.Geom.Rectangle.Contains,
       useHandCursor: true,
     });
@@ -148,7 +165,9 @@ export class BubbleStyleScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-LEFT", () => this.navigate(-1));
     this.input.keyboard?.on("keydown-RIGHT", () => this.navigate(1));
     this.input.keyboard?.on("keydown-ENTER", () => this.selectStyle());
-    this.input.keyboard?.on("keydown-ESC", () => this.scene.start("StartScene"));
+    this.input.keyboard?.on("keydown-ESC", () =>
+      this.scene.start("StartScene")
+    );
 
     // Generate textures if needed
     BubbleVisuals.generateTextures(this);
@@ -160,7 +179,8 @@ export class BubbleStyleScene extends Phaser.Scene {
   navigate(direction: number) {
     this.sound.play("sfx_button");
     const styles = GameSettings.bubbleStyles;
-    this.currentIndex = (this.currentIndex + direction + styles.length) % styles.length;
+    this.currentIndex =
+      (this.currentIndex + direction + styles.length) % styles.length;
     this.updatePreview();
   }
 

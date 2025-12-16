@@ -20,7 +20,13 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GameSettings.canvas.height,
   },
   backgroundColor: "#1a1a1a",
-  scene: [PreloadScene, StartScene, BubbleStyleScene, CharacterSelectScene, GameScene],
+  scene: [
+    PreloadScene,
+    StartScene,
+    BubbleStyleScene,
+    CharacterSelectScene,
+    GameScene,
+  ],
   physics: {
     default: "arcade",
   },

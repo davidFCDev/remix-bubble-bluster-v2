@@ -620,7 +620,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   createBubbleVisual(x: number, y: number, size: number, color: string) {
-    return BubbleVisuals.createWithStyle(this, x, y, size, color, this.bubbleStyle);
+    return BubbleVisuals.createWithStyle(
+      this,
+      x,
+      y,
+      size,
+      color,
+      this.bubbleStyle
+    );
   }
 
   getBubblePos(row: number, col: number) {

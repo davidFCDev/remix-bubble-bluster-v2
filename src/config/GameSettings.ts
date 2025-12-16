@@ -48,6 +48,12 @@ export const GameSettings = {
       description: "Sweet striped lollipop bubbles",
       locked: false,
     },
+    {
+      id: "soap",
+      name: "Soap",
+      description: "Iridescent soap bubbles with rainbow shimmer",
+      locked: false,
+    },
   ],
   gameplay: {
     baseScorePerLevel: 2000,

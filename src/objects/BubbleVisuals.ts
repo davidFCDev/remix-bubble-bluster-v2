@@ -689,6 +689,8 @@ export class BubbleVisuals {
         return this.createNeonBubble(scene, x, y, size, color);
       case "candy":
         return this.createCandyBubble(scene, x, y, size, color);
+      case "soap":
+        return this.createSoapBubble(scene, x, y, size, color);
       case "classic":
       default:
         return this.create(scene, x, y, size, color);
@@ -707,13 +709,15 @@ export class BubbleVisuals {
   ): Phaser.GameObjects.Container {
     const container = scene.add.container(x, y);
     const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
-    const darkerColor = Phaser.Display.Color.ValueToColor(hexColor).darken(25).color;
-    const lighterColor = Phaser.Display.Color.ValueToColor(hexColor).lighten(30).color;
+    const darkerColor =
+      Phaser.Display.Color.ValueToColor(hexColor).darken(25).color;
+    const lighterColor =
+      Phaser.Display.Color.ValueToColor(hexColor).lighten(30).color;
     const halfSize = size / 2 - 2;
 
     // Base hexagonal gem shape
     const gem = scene.add.graphics();
-    
+
     // Main gem body
     gem.fillStyle(hexColor, 1);
     gem.beginPath();
@@ -760,7 +764,15 @@ export class BubbleVisuals {
     highlight.fillPath();
 
     // Sparkle effect
-    const sparkle = scene.add.star(halfSize * 0.3, -halfSize * 0.4, 4, 2, 4, 0xffffff, 0.9);
+    const sparkle = scene.add.star(
+      halfSize * 0.3,
+      -halfSize * 0.4,
+      4,
+      2,
+      4,
+      0xffffff,
+      0.9
+    );
     scene.tweens.add({
       targets: sparkle,
       scale: { from: 0.8, to: 1.3 },
@@ -862,14 +874,14 @@ export class BubbleVisuals {
 
     // Candy stripes using graphics
     const stripes = scene.add.graphics();
-    
+
     // Create spiral stripes
     stripes.fillStyle(hexColor, 0.9);
     const numStripes = 6;
     for (let i = 0; i < numStripes; i++) {
       const angle = (i / numStripes) * Math.PI * 2;
       const nextAngle = ((i + 0.5) / numStripes) * Math.PI * 2;
-      
+
       stripes.beginPath();
       stripes.moveTo(0, 0);
       stripes.arc(0, 0, halfSize - 2, angle, nextAngle, false);
@@ -887,7 +899,13 @@ export class BubbleVisuals {
     shine.fillEllipse(-halfSize / 3, -halfSize / 3, halfSize / 2, halfSize / 3);
 
     // Small highlight dot
-    const dot = scene.add.circle(-halfSize / 4, -halfSize / 4, 3, 0xffffff, 0.8);
+    const dot = scene.add.circle(
+      -halfSize / 4,
+      -halfSize / 4,
+      3,
+      0xffffff,
+      0.8
+    );
 
     // Subtle rotation animation
     scene.tweens.add({
@@ -899,6 +917,57 @@ export class BubbleVisuals {
     });
 
     container.add([base, stripes, shine, dot]);
+    return container;
+  }
+
+  /**
+   * Soap Style - Iridescent soap bubbles with rainbow shimmer (optimized)
+   */
+  static createSoapBubble(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    size: number,
+    color: string
+  ): Phaser.GameObjects.Container {
+    const container = scene.add.container(x, y);
+    const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
+    const halfSize = size / 2;
+
+    // Transparent base bubble (glass-like)
+    const base = scene.add.circle(0, 0, halfSize, hexColor, 0.55);
+    base.setStrokeStyle(1.5, hexColor, 0.85);
+
+    // Inner glow - subtle white overlay
+    const innerGlow = scene.add.circle(0, 0, halfSize - 4, 0xffffff, 0.15);
+
+    // Static rainbow shimmer (no animation - just visual effect)
+    const rainbow = scene.add.graphics();
+    const rainbowColors = [0xff6b6b, 0xffd93d, 0x6bcb77, 0x4d96ff, 0xc77dff];
+    
+    rainbowColors.forEach((rColor, i) => {
+      const startAngle = -Math.PI * 0.7 + (i * 0.2);
+      rainbow.lineStyle(2, rColor, 0.2);
+      rainbow.beginPath();
+      rainbow.arc(0, 0, halfSize - 5 - i * 2, startAngle, startAngle + 0.5);
+      rainbow.strokePath();
+    });
+
+    // Main highlight (top-left shine) - static
+    const mainShine = scene.add.graphics();
+    mainShine.fillStyle(0xffffff, 0.6);
+    mainShine.fillEllipse(-halfSize / 3, -halfSize / 3, halfSize / 2, halfSize / 3);
+
+    // Tiny bright sparkle dot - static
+    const sparkle = scene.add.circle(
+      -halfSize / 4,
+      -halfSize / 3,
+      2,
+      0xffffff,
+      0.85
+    );
+
+    container.add([base, innerGlow, rainbow, mainShine, sparkle]);
     return container;
   }
 }
