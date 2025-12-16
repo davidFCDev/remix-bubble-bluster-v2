@@ -763,7 +763,7 @@ export class BubbleVisuals {
     highlight.closePath();
     highlight.fillPath();
 
-    // Sparkle effect
+    // Sparkle effect (static)
     const sparkle = scene.add.star(
       halfSize * 0.3,
       -halfSize * 0.4,
@@ -771,16 +771,8 @@ export class BubbleVisuals {
       2,
       4,
       0xffffff,
-      0.9
+      0.8
     );
-    scene.tweens.add({
-      targets: sparkle,
-      scale: { from: 0.8, to: 1.3 },
-      alpha: { from: 0.9, to: 0.3 },
-      duration: 600,
-      yoyo: true,
-      repeat: -1,
-    });
 
     // Outer glow
     gem.lineStyle(2, lighterColor, 0.8);
@@ -813,17 +805,8 @@ export class BubbleVisuals {
     const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
     const halfSize = size / 2 - 2;
 
-    // Outer glow
-    const glow = scene.add.circle(0, 0, halfSize + 6, hexColor, 0.3);
-    scene.tweens.add({
-      targets: glow,
-      alpha: { from: 0.3, to: 0.15 },
-      scale: { from: 1, to: 1.1 },
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
+    // Outer glow (static)
+    const glow = scene.add.circle(0, 0, halfSize + 6, hexColor, 0.25);
 
     // Inner dark core
     const core = scene.add.circle(0, 0, halfSize - 4, 0x111111, 0.9);
@@ -837,18 +820,8 @@ export class BubbleVisuals {
     ring.lineStyle(1, hexColor, 0.6);
     ring.strokeCircle(0, 0, halfSize - 8);
 
-    // Center dot
-    const centerDot = scene.add.circle(0, 0, 4, hexColor, 0.8);
-
-    // Pulse the center dot
-    scene.tweens.add({
-      targets: centerDot,
-      scale: { from: 1, to: 1.3 },
-      alpha: { from: 0.8, to: 0.4 },
-      duration: 600,
-      yoyo: true,
-      repeat: -1,
-    });
+    // Center dot (static)
+    const centerDot = scene.add.circle(0, 0, 4, hexColor, 0.7);
 
     container.add([glow, core, ring, centerDot]);
     return container;
@@ -907,15 +880,6 @@ export class BubbleVisuals {
       0.8
     );
 
-    // Subtle rotation animation
-    scene.tweens.add({
-      targets: stripes,
-      angle: 360,
-      duration: 10000,
-      repeat: -1,
-      ease: "Linear",
-    });
-
     container.add([base, stripes, shine, dot]);
     return container;
   }
@@ -944,9 +908,9 @@ export class BubbleVisuals {
     // Static rainbow shimmer (no animation - just visual effect)
     const rainbow = scene.add.graphics();
     const rainbowColors = [0xff6b6b, 0xffd93d, 0x6bcb77, 0x4d96ff, 0xc77dff];
-    
+
     rainbowColors.forEach((rColor, i) => {
-      const startAngle = -Math.PI * 0.7 + (i * 0.2);
+      const startAngle = -Math.PI * 0.7 + i * 0.2;
       rainbow.lineStyle(2, rColor, 0.2);
       rainbow.beginPath();
       rainbow.arc(0, 0, halfSize - 5 - i * 2, startAngle, startAngle + 0.5);
@@ -956,7 +920,12 @@ export class BubbleVisuals {
     // Main highlight (top-left shine) - static
     const mainShine = scene.add.graphics();
     mainShine.fillStyle(0xffffff, 0.6);
-    mainShine.fillEllipse(-halfSize / 3, -halfSize / 3, halfSize / 2, halfSize / 3);
+    mainShine.fillEllipse(
+      -halfSize / 3,
+      -halfSize / 3,
+      halfSize / 2,
+      halfSize / 3
+    );
 
     // Tiny bright sparkle dot - static
     const sparkle = scene.add.circle(
