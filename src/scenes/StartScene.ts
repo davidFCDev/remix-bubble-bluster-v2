@@ -95,39 +95,37 @@ export class StartScene extends Phaser.Scene {
       this.scene.start("CharacterSelectScene");
     });
 
-    // Style Button (below Start)
+    // Style Button (below Start) - Same size as Start button
     const styleBtnY = btnY + 100;
-    const styleBtnWidth = 240;
-    const styleBtnHeight = 60;
 
     const styleBtnContainer = this.add.container(width / 2, styleBtnY);
 
     const styleBtnShadow = this.add.graphics();
     styleBtnShadow.fillStyle(0x000000, 1);
     styleBtnShadow.fillRoundedRect(
-      -styleBtnWidth / 2 + 6,
-      -styleBtnHeight / 2 + 6,
-      styleBtnWidth,
-      styleBtnHeight,
-      12
+      -btnWidth / 2 + 8,
+      -btnHeight / 2 + 8,
+      btnWidth,
+      btnHeight,
+      15
     );
 
     const styleBtnBg = this.add.graphics();
     styleBtnBg.fillStyle(0x9932cc, 1); // Purple
     styleBtnBg.fillRoundedRect(
-      -styleBtnWidth / 2,
-      -styleBtnHeight / 2,
-      styleBtnWidth,
-      styleBtnHeight,
-      12
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      15
     );
 
     // Get current style name from registry
     const currentStyleId = this.registry.get("bubbleStyle") || "classic";
     const styleBtnText = this.add
-      .text(0, 0, `⚪ STYLE`, {
+      .text(0, 0, `STYLE`, {
         fontFamily: "Pixelify Sans",
-        fontSize: "28px",
+        fontSize: "42px",
         color: "#FFFFFF",
         fontStyle: "bold",
       })
@@ -137,10 +135,10 @@ export class StartScene extends Phaser.Scene {
 
     styleBtnContainer.setInteractive({
       hitArea: new Phaser.Geom.Rectangle(
-        -styleBtnWidth / 2,
-        -styleBtnHeight / 2,
-        styleBtnWidth,
-        styleBtnHeight
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
       ),
       hitAreaCallback: Phaser.Geom.Rectangle.Contains,
       useHandCursor: true,

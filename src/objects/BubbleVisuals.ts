@@ -683,8 +683,8 @@ export class BubbleVisuals {
 
     // For basic color bubbles, apply the selected style
     switch (style) {
-      case "galaxy":
-        return this.createGalaxyBubble(scene, x, y, size, color);
+      case "gem":
+        return this.createGemBubble(scene, x, y, size, color);
       case "neon":
         return this.createNeonBubble(scene, x, y, size, color);
       case "candy":
@@ -696,9 +696,9 @@ export class BubbleVisuals {
   }
 
   /**
-   * Galaxy Style - Cosmic spheres with stars
+   * Gem Style - Sparkling gemstones with facets
    */
-  static createGalaxyBubble(
+  static createGemBubble(
     scene: Phaser.Scene,
     x: number,
     y: number,
@@ -707,65 +707,83 @@ export class BubbleVisuals {
   ): Phaser.GameObjects.Container {
     const container = scene.add.container(x, y);
     const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
+    const darkerColor = Phaser.Display.Color.ValueToColor(hexColor).darken(25).color;
+    const lighterColor = Phaser.Display.Color.ValueToColor(hexColor).lighten(30).color;
     const halfSize = size / 2 - 2;
 
-    // Dark space background
-    const space = scene.add.circle(0, 0, halfSize, 0x0a0a1a);
-    space.setStrokeStyle(2, hexColor);
-
-    // Colored nebula overlay
-    const nebula = scene.add.circle(0, 0, halfSize - 4, hexColor, 0.4);
+    // Base hexagonal gem shape
+    const gem = scene.add.graphics();
     
-    // Swirling nebula effect
+    // Main gem body
+    gem.fillStyle(hexColor, 1);
+    gem.beginPath();
+    const sides = 6;
+    for (let i = 0; i < sides; i++) {
+      const angle = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(angle) * halfSize;
+      const py = Math.sin(angle) * halfSize;
+      if (i === 0) gem.moveTo(px, py);
+      else gem.lineTo(px, py);
+    }
+    gem.closePath();
+    gem.fillPath();
+
+    // Facet lines (inner structure)
+    gem.lineStyle(1, darkerColor, 0.6);
+    gem.beginPath();
+    gem.moveTo(0, -halfSize);
+    gem.lineTo(0, halfSize);
+    gem.moveTo(-halfSize * 0.87, -halfSize * 0.5);
+    gem.lineTo(halfSize * 0.87, halfSize * 0.5);
+    gem.moveTo(-halfSize * 0.87, halfSize * 0.5);
+    gem.lineTo(halfSize * 0.87, -halfSize * 0.5);
+    gem.strokePath();
+
+    // Bright highlight (top facet)
+    const highlight = scene.add.graphics();
+    highlight.fillStyle(0xffffff, 0.7);
+    highlight.beginPath();
+    highlight.moveTo(0, -halfSize);
+    highlight.lineTo(-halfSize * 0.5, -halfSize * 0.3);
+    highlight.lineTo(0, -halfSize * 0.2);
+    highlight.lineTo(halfSize * 0.3, -halfSize * 0.4);
+    highlight.closePath();
+    highlight.fillPath();
+
+    // Secondary highlight
+    highlight.fillStyle(lighterColor, 0.5);
+    highlight.beginPath();
+    highlight.moveTo(-halfSize * 0.87, -halfSize * 0.5);
+    highlight.lineTo(-halfSize * 0.4, 0);
+    highlight.lineTo(-halfSize * 0.5, -halfSize * 0.3);
+    highlight.closePath();
+    highlight.fillPath();
+
+    // Sparkle effect
+    const sparkle = scene.add.star(halfSize * 0.3, -halfSize * 0.4, 4, 2, 4, 0xffffff, 0.9);
     scene.tweens.add({
-      targets: nebula,
-      scaleX: { from: 0.9, to: 1.1 },
-      scaleY: { from: 1.1, to: 0.9 },
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
-    // Twinkling stars
-    const stars = scene.add.graphics();
-    const starPositions = [
-      { x: -halfSize / 3, y: -halfSize / 4, size: 2 },
-      { x: halfSize / 4, y: -halfSize / 3, size: 1.5 },
-      { x: -halfSize / 5, y: halfSize / 3, size: 1 },
-      { x: halfSize / 3, y: halfSize / 5, size: 2 },
-      { x: 0, y: -halfSize / 2, size: 1.5 },
-      { x: -halfSize / 2, y: 0, size: 1 },
-    ];
-
-    starPositions.forEach((star) => {
-      stars.fillStyle(0xffffff, 0.9);
-      stars.fillCircle(star.x, star.y, star.size);
-    });
-
-    // Twinkle animation
-    scene.tweens.add({
-      targets: stars,
+      targets: sparkle,
+      scale: { from: 0.8, to: 1.3 },
       alpha: { from: 0.9, to: 0.3 },
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
-    // Central bright star
-    const centerStar = scene.add.star(0, 0, 4, 2, 5, 0xffffff, 0.8);
-    scene.tweens.add({
-      targets: centerStar,
-      scale: { from: 0.8, to: 1.2 },
-      alpha: { from: 0.8, to: 0.4 },
-      angle: 180,
-      duration: 1500,
+      duration: 600,
       yoyo: true,
       repeat: -1,
     });
 
-    container.add([space, nebula, stars, centerStar]);
+    // Outer glow
+    gem.lineStyle(2, lighterColor, 0.8);
+    gem.beginPath();
+    for (let i = 0; i < sides; i++) {
+      const angle = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(angle) * halfSize;
+      const py = Math.sin(angle) * halfSize;
+      if (i === 0) gem.moveTo(px, py);
+      else gem.lineTo(px, py);
+    }
+    gem.closePath();
+    gem.strokePath();
+
+    container.add([gem, highlight, sparkle]);
     return container;
   }
 

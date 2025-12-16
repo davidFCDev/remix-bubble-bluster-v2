@@ -31,9 +31,9 @@ export const GameSettings = {
       locked: false,
     },
     {
-      id: "galaxy",
-      name: "Galaxy",
-      description: "Cosmic spheres with twinkling stars",
+      id: "gem",
+      name: "Gem",
+      description: "Sparkling gemstones with facets",
       locked: false,
     },
     {
