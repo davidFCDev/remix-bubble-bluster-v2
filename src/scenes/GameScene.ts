@@ -2602,9 +2602,9 @@ export class GameScene extends Phaser.Scene {
       // 2. Glass sphere (gradient effect with multiple layers)
       const outerGlass = this.add.circle(0, 0, halfSize + 2, 0x1a472a, 0.8); // Dark green
       outerGlass.setStrokeStyle(3, 0xffd700); // Gold border
-      
+
       const innerGlass = this.add.circle(0, 0, halfSize - 2, 0x2d5a3f, 0.9); // Forest green
-      
+
       // 3. Shine/reflection (glass effect)
       const shine = this.add.graphics();
       shine.fillStyle(0xffffff, 0.7);
@@ -2630,7 +2630,7 @@ export class GameScene extends Phaser.Scene {
       }
       star.closePath();
       star.fillPath();
-      
+
       // Star glow
       this.tweens.add({
         targets: star,
@@ -2647,10 +2647,14 @@ export class GameScene extends Phaser.Scene {
       const snowflakes = this.add.graphics();
       snowflakes.fillStyle(0xffffff, 0.9);
       const snowPositions = [
-        { x: -8, y: -5 }, { x: 10, y: 8 }, { x: -5, y: 12 },
-        { x: 8, y: -10 }, { x: -12, y: 3 }, { x: 3, y: -8 }
+        { x: -8, y: -5 },
+        { x: 10, y: 8 },
+        { x: -5, y: 12 },
+        { x: 8, y: -10 },
+        { x: -12, y: 3 },
+        { x: 3, y: -8 },
       ];
-      snowPositions.forEach(pos => {
+      snowPositions.forEach((pos) => {
         snowflakes.fillCircle(pos.x, pos.y, 2);
       });
       this.tweens.add({
@@ -2670,7 +2674,15 @@ export class GameScene extends Phaser.Scene {
       cap.fillStyle(0xc0c0c0, 1); // Silver ring
       cap.fillCircle(0, -halfSize - 6, 4);
 
-      container.add([aura, outerGlass, innerGlass, shine, star, snowflakes, cap]);
+      container.add([
+        aura,
+        outerGlass,
+        innerGlass,
+        shine,
+        star,
+        snowflakes,
+        cap,
+      ]);
     }
   }
 

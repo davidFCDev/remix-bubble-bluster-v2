@@ -77,7 +77,17 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Assets loaded, wait for minimum display time then transition
+    // Apply NEAREST filter to all character sprites for crisp pixel art
+    GameSettings.characters.forEach((char: any) => {
+      const idleTexture = this.textures.get(`${char.id}_idle`);
+      const attackTexture = this.textures.get(`${char.id}_attack`);
+      if (idleTexture) {
+        idleTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      }
+      if (attackTexture) {
+        attackTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      }
+    });
   }
 
   private createStudioBranding(): void {
