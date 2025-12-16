@@ -1561,12 +1561,17 @@ export class GameScene extends Phaser.Scene {
                   this.grid[r][c] = newColor;
                   transformedPositions.push({ r, c });
 
-                  // Update sprite visually
+                  // Update sprite visually - destroy old and create new
                   if (this.bubbleSprites[r][c]) {
-                    const sprite = this.bubbleSprites[r][c]!;
-                    sprite.setFillStyle(Phaser.Display.Color.HexStringToColor(newColor).color);
-                    // Add sparkle effect
-                    this.createGiftParticles(sprite.x + this.gameContainer.x, sprite.y + this.gameContainer.y);
+                    const oldSprite = this.bubbleSprites[r][c]!;
+                    const spriteX = oldSprite.x;
+                    const spriteY = oldSprite.y;
+                    // Add sparkle effect before destroying
+                    this.createGiftParticles(spriteX + this.gameContainer.x, spriteY + this.gameContainer.y);
+                    oldSprite.destroy();
+                    this.bubbleSprites[r][c] = null;
+                    // Create new sprite with new color
+                    this.createBubbleSprite(r, c, newColor);
                   }
                 }
               }
