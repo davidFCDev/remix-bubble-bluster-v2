@@ -218,13 +218,15 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   createAnimations() {
-    GameSettings.characters.forEach((char) => {
+    GameSettings.characters.forEach((char: any) => {
       if (!this.anims.exists(`${char.id}_idle_anim`)) {
+        // Use frameCount from config, default to 4 frames (0-3)
+        const endFrame = (char.frameConfig?.frameCount || 4) - 1;
         this.anims.create({
           key: `${char.id}_idle_anim`,
           frames: this.anims.generateFrameNumbers(`${char.id}_idle`, {
             start: 0,
-            end: 3,
+            end: endFrame,
           }),
           frameRate: 8,
           repeat: -1,

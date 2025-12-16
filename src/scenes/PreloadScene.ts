@@ -48,14 +48,17 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image("loader", GameSettings.assets.loader);
 
     // Load Character Sprites
-    GameSettings.characters.forEach((char) => {
+    GameSettings.characters.forEach((char: any) => {
+      const frameWidth = char.frameConfig?.frameWidth || 32;
+      const frameHeight = char.frameConfig?.frameHeight || 32;
+      
       this.load.spritesheet(`${char.id}_idle`, char.spriteIdle, {
-        frameWidth: 32,
-        frameHeight: 32,
+        frameWidth: frameWidth,
+        frameHeight: frameHeight,
       });
       this.load.spritesheet(`${char.id}_attack`, char.spriteAttack, {
-        frameWidth: 32,
-        frameHeight: 32,
+        frameWidth: frameWidth,
+        frameHeight: frameHeight,
       });
     });
 

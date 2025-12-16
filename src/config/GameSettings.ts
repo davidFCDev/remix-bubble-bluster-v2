@@ -68,6 +68,23 @@ export const GameSettings = {
       spriteAttack:
         "https://lqy3lriiybxcejon.public.blob.vercel-storage.com/Y58Z5vSLnB41/Owlet_Monster_Attack1_4-IPV3tIX6BdetCSKYUHviJxvMpBsD50.png?UTIu",
     },
+    {
+      id: "Santa",
+      name: "Santa",
+      lore: "The jolly gift-giver from the North Pole, spreading holiday cheer one bubble at a time!",
+      skillDesc:
+        "Gift Storm: Drops 3 random special bubbles (Wild, Bomb, or Ice) onto the field as presents from above!",
+      hasSkill: true,
+      spriteIdle:
+        "https://remix.gg/blob/Y58Z5vSLnB41/santa-LrH37lKKrOuagQqChEa8YtehtKrSpo.webp?Le8q",
+      spriteAttack:
+        "https://remix.gg/blob/Y58Z5vSLnB41/santa-LrH37lKKrOuagQqChEa8YtehtKrSpo.webp?Le8q",
+      frameConfig: {
+        frameWidth: 32,
+        frameHeight: 32,
+        frameCount: 6,
+      },
+    },
   ],
   assets: {
     backgroundStart:

@@ -851,10 +851,90 @@ export class GameScene extends Phaser.Scene {
       this.currentBubble.color = "#00FFFF"; // Cyan/Ice color
       this.applySkillVisuals(this.currentBubble, "Whitey");
       // this.playSound("sfx_special_whitey"); // Removed specific sound for now
+    } else if (this.selectedCharacter.id === "Santa") {
+      // Gift Storm: Drop 3 random special bubbles onto the field
+      this.activateGiftStorm();
     }
 
     this.abilityAvailable = false;
     this.skillBtn.setAlpha(0.5);
+  }
+
+  activateGiftStorm() {
+    // Santa's Gift Storm: Destroy 3 random bubbles from the field
+    const bubblesOnField: { row: number; col: number }[] = [];
+    
+    // Collect all bubble positions
+    for (let row = 0; row < this.GRID_HEIGHT; row++) {
+      for (let col = 0; col < this.GRID_WIDTH; col++) {
+        if (this.grid[row] && this.grid[row][col] !== null) {
+          bubblesOnField.push({ row, col });
+        }
+      }
+    }
+    
+    // Randomly select up to 3 bubbles to destroy
+    const numToDestroy = Math.min(3, bubblesOnField.length);
+    const selectedBubbles: { row: number; col: number }[] = [];
+    
+    for (let i = 0; i < numToDestroy; i++) {
+      if (bubblesOnField.length === 0) break;
+      const randomIndex = Math.floor(Math.random() * bubblesOnField.length);
+      selectedBubbles.push(bubblesOnField[randomIndex]);
+      bubblesOnField.splice(randomIndex, 1);
+    }
+    
+    // Destroy selected bubbles with festive effect
+    selectedBubbles.forEach((pos, index) => {
+      this.time.delayedCall(index * 200, () => {
+        if (this.grid[pos.row] && this.grid[pos.row][pos.col] !== null) {
+          const color = this.grid[pos.row][pos.col]!;
+          this.grid[pos.row][pos.col] = null;
+          
+          // Remove sprite
+          if (this.bubbleSprites[pos.row] && this.bubbleSprites[pos.row][pos.col]) {
+            const sprite = this.bubbleSprites[pos.row][pos.col];
+            if (sprite) {
+              // Create gift/present particle effect
+              this.createGiftParticles(sprite.x, sprite.y + this.GRID_OFFSET_Y);
+              sprite.destroy();
+            }
+            this.bubbleSprites[pos.row][pos.col] = null;
+          }
+          
+          this.score += 50;
+          this.playSound("sfx_pop");
+        }
+      });
+    });
+    
+    // After all gifts are dropped, check for floating bubbles
+    this.time.delayedCall(numToDestroy * 200 + 100, () => {
+      this.removeFloatingBubbles();
+      this.updateScoreDisplay();
+    });
+  }
+
+  createGiftParticles(x: number, y: number) {
+    // Create festive particle effect for Santa's gift
+    const colors = [0xff0000, 0x00ff00, 0xffd700, 0xffffff]; // Red, Green, Gold, White
+    
+    for (let i = 0; i < 8; i++) {
+      const particle = this.add.circle(x, y, 4, Phaser.Utils.Array.GetRandom(colors));
+      const angle = (i / 8) * Math.PI * 2;
+      const distance = 40 + Math.random() * 20;
+      
+      this.tweens.add({
+        targets: particle,
+        x: x + Math.cos(angle) * distance,
+        y: y + Math.sin(angle) * distance,
+        alpha: 0,
+        scale: 0.5,
+        duration: 400,
+        ease: "Power2",
+        onComplete: () => particle.destroy(),
+      });
+    }
   }
 
   drawCeiling() {
