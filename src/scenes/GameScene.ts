@@ -68,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private skillButtonPressed: boolean = false; // Track if skill button was pressed
   private lastTouchX: number = 0; // Track last touch X position for relative aiming
   private recentColors: string[] = []; // Track recent bubble colors to prevent 3+ consecutive
+  private bubbleStyle: string = "classic"; // Selected bubble visual style
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -82,6 +83,7 @@ export class GameScene extends Phaser.Scene {
 
   init(data: any) {
     this.selectedCharacter = data.character || GameSettings.characters[0];
+    this.bubbleStyle = this.registry.get("bubbleStyle") || "classic";
     this.score = 0;
     this.level = 1;
     this.gameOver = false;
@@ -618,7 +620,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   createBubbleVisual(x: number, y: number, size: number, color: string) {
-    return BubbleVisuals.create(this, x, y, size, color);
+    return BubbleVisuals.createWithStyle(this, x, y, size, color, this.bubbleStyle);
   }
 
   getBubblePos(row: number, col: number) {

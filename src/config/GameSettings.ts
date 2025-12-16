@@ -23,6 +23,32 @@ export const GameSettings = {
     ],
     neonBlue: "#00ffcc",
   },
+  bubbleStyles: [
+    {
+      id: "classic",
+      name: "Classic",
+      description: "Shiny orbs with a retro glow",
+      locked: false,
+    },
+    {
+      id: "pixel",
+      name: "Pixel",
+      description: "8-bit style pixel art bubbles",
+      locked: false,
+    },
+    {
+      id: "neon",
+      name: "Neon",
+      description: "Glowing cyberpunk spheres",
+      locked: true,
+    },
+    {
+      id: "candy",
+      name: "Candy",
+      description: "Sweet striped lollipop bubbles",
+      locked: true,
+    },
+  ],
   gameplay: {
     baseScorePerLevel: 2000,
     maxTimeBonus: 8000,

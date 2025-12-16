@@ -40,7 +40,7 @@ export class StartScene extends Phaser.Scene {
     // Start Button
     const btnWidth = 320; // Slightly wider
     const btnHeight = 80;
-    const btnY = height * 0.75; // Moved up
+    const btnY = height * 0.7; // Moved up more to make room for Style button
 
     const startBtnContainer = this.add.container(width / 2, btnY);
 
@@ -93,6 +93,62 @@ export class StartScene extends Phaser.Scene {
     startBtnContainer.on("pointerdown", () => {
       this.sound.play("sfx_button");
       this.scene.start("CharacterSelectScene");
+    });
+
+    // Style Button (below Start)
+    const styleBtnY = btnY + 100;
+    const styleBtnWidth = 240;
+    const styleBtnHeight = 60;
+
+    const styleBtnContainer = this.add.container(width / 2, styleBtnY);
+
+    const styleBtnShadow = this.add.graphics();
+    styleBtnShadow.fillStyle(0x000000, 1);
+    styleBtnShadow.fillRoundedRect(
+      -styleBtnWidth / 2 + 6,
+      -styleBtnHeight / 2 + 6,
+      styleBtnWidth,
+      styleBtnHeight,
+      12
+    );
+
+    const styleBtnBg = this.add.graphics();
+    styleBtnBg.fillStyle(0x9932cc, 1); // Purple
+    styleBtnBg.fillRoundedRect(
+      -styleBtnWidth / 2,
+      -styleBtnHeight / 2,
+      styleBtnWidth,
+      styleBtnHeight,
+      12
+    );
+
+    // Get current style name from registry
+    const currentStyleId = this.registry.get("bubbleStyle") || "classic";
+    const styleBtnText = this.add
+      .text(0, 0, `⚪ STYLE`, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "28px",
+        color: "#FFFFFF",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    styleBtnContainer.add([styleBtnShadow, styleBtnBg, styleBtnText]);
+
+    styleBtnContainer.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -styleBtnWidth / 2,
+        -styleBtnHeight / 2,
+        styleBtnWidth,
+        styleBtnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    styleBtnContainer.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.scene.start("BubbleStyleScene");
     });
 
     // Instructions Overlay

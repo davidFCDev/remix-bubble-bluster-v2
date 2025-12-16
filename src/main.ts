@@ -1,5 +1,6 @@
 import { initRemix } from "@insidethesim/remix-dev";
 import GameSettings from "./config/GameSettings";
+import { BubbleStyleScene } from "./scenes/BubbleStyleScene";
 import { CharacterSelectScene } from "./scenes/CharacterSelectScene";
 import { GameScene } from "./scenes/GameScene";
 import { PreloadScene } from "./scenes/PreloadScene";
@@ -19,7 +20,7 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GameSettings.canvas.height,
   },
   backgroundColor: "#1a1a1a",
-  scene: [PreloadScene, StartScene, CharacterSelectScene, GameScene],
+  scene: [PreloadScene, StartScene, BubbleStyleScene, CharacterSelectScene, GameScene],
   physics: {
     default: "arcade",
   },

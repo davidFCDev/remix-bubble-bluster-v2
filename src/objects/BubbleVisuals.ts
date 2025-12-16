@@ -656,4 +656,235 @@ export class BubbleVisuals {
     container.add([circle, shine]);
     return container;
   }
+
+  /**
+   * Create a bubble with a specific visual style
+   */
+  static createWithStyle(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    style: string = "classic"
+  ): Phaser.GameObjects.Container {
+    // For special bubble types, always use the default visual
+    if (
+      color === "STONE" ||
+      color === "ANCHOR" ||
+      color === "SLIME" ||
+      color === "PRISM" ||
+      color === "STOP" ||
+      color === "BOMB" ||
+      color.startsWith("CHAMELEON:")
+    ) {
+      return this.create(scene, x, y, size, color);
+    }
+
+    // For basic color bubbles, apply the selected style
+    switch (style) {
+      case "pixel":
+        return this.createPixelBubble(scene, x, y, size, color);
+      case "neon":
+        return this.createNeonBubble(scene, x, y, size, color);
+      case "candy":
+        return this.createCandyBubble(scene, x, y, size, color);
+      case "classic":
+      default:
+        return this.create(scene, x, y, size, color);
+    }
+  }
+
+  /**
+   * Pixel Art Style - 8-bit retro look
+   */
+  static createPixelBubble(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    size: number,
+    color: string
+  ): Phaser.GameObjects.Container {
+    const container = scene.add.container(x, y);
+    const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
+    const halfSize = size / 2 - 2;
+
+    // Create pixelated look using rectangles
+    const graphics = scene.add.graphics();
+
+    // Main color fill (large pixels)
+    graphics.fillStyle(hexColor, 1);
+    const pixelSize = size / 6;
+    
+    // Draw a circle-ish shape with pixels
+    const pixels = [
+      // Row 0 (top)
+      { x: -1, y: -3 }, { x: 0, y: -3 }, { x: 1, y: -3 },
+      // Row 1
+      { x: -2, y: -2 }, { x: -1, y: -2 }, { x: 0, y: -2 }, { x: 1, y: -2 }, { x: 2, y: -2 },
+      // Row 2
+      { x: -3, y: -1 }, { x: -2, y: -1 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 2, y: -1 }, { x: 3, y: -1 },
+      // Row 3 (middle)
+      { x: -3, y: 0 }, { x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 },
+      // Row 4
+      { x: -3, y: 1 }, { x: -2, y: 1 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 },
+      // Row 5
+      { x: -2, y: 2 }, { x: -1, y: 2 }, { x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 },
+      // Row 6 (bottom)
+      { x: -1, y: 3 }, { x: 0, y: 3 }, { x: 1, y: 3 },
+    ];
+
+    pixels.forEach((p) => {
+      graphics.fillRect(
+        p.x * pixelSize - pixelSize / 2,
+        p.y * pixelSize - pixelSize / 2,
+        pixelSize,
+        pixelSize
+      );
+    });
+
+    // Highlight pixels (top-left)
+    graphics.fillStyle(0xffffff, 0.7);
+    [{ x: -1, y: -2 }, { x: -2, y: -1 }].forEach((p) => {
+      graphics.fillRect(
+        p.x * pixelSize - pixelSize / 2,
+        p.y * pixelSize - pixelSize / 2,
+        pixelSize,
+        pixelSize
+      );
+    });
+
+    // Dark border pixels
+    const darkerColor = Phaser.Display.Color.ValueToColor(hexColor).darken(30).color;
+    graphics.fillStyle(darkerColor, 1);
+    [
+      { x: -1, y: 3 }, { x: 0, y: 3 }, { x: 1, y: 3 },
+      { x: 2, y: 2 }, { x: 3, y: 1 }, { x: 3, y: 0 },
+    ].forEach((p) => {
+      graphics.fillRect(
+        p.x * pixelSize - pixelSize / 2,
+        p.y * pixelSize - pixelSize / 2,
+        pixelSize,
+        pixelSize
+      );
+    });
+
+    container.add([graphics]);
+    return container;
+  }
+
+  /**
+   * Neon Style - Glowing cyberpunk look
+   */
+  static createNeonBubble(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    size: number,
+    color: string
+  ): Phaser.GameObjects.Container {
+    const container = scene.add.container(x, y);
+    const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
+    const halfSize = size / 2 - 2;
+
+    // Outer glow
+    const glow = scene.add.circle(0, 0, halfSize + 6, hexColor, 0.3);
+    scene.tweens.add({
+      targets: glow,
+      alpha: { from: 0.3, to: 0.15 },
+      scale: { from: 1, to: 1.1 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Inner dark core
+    const core = scene.add.circle(0, 0, halfSize - 4, 0x111111, 0.9);
+
+    // Neon ring (main visual)
+    const ring = scene.add.graphics();
+    ring.lineStyle(4, hexColor, 1);
+    ring.strokeCircle(0, 0, halfSize - 2);
+
+    // Inner thin ring
+    ring.lineStyle(1, hexColor, 0.6);
+    ring.strokeCircle(0, 0, halfSize - 8);
+
+    // Center dot
+    const centerDot = scene.add.circle(0, 0, 4, hexColor, 0.8);
+
+    // Pulse the center dot
+    scene.tweens.add({
+      targets: centerDot,
+      scale: { from: 1, to: 1.3 },
+      alpha: { from: 0.8, to: 0.4 },
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    container.add([glow, core, ring, centerDot]);
+    return container;
+  }
+
+  /**
+   * Candy Style - Sweet striped lollipop look
+   */
+  static createCandyBubble(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    size: number,
+    color: string
+  ): Phaser.GameObjects.Container {
+    const container = scene.add.container(x, y);
+    const hexColor = Phaser.Display.Color.HexStringToColor(color).color;
+    const halfSize = size / 2 - 2;
+
+    // Base circle (white)
+    const base = scene.add.circle(0, 0, halfSize, 0xffffff);
+    base.setStrokeStyle(2, hexColor);
+
+    // Candy stripes using graphics
+    const stripes = scene.add.graphics();
+    
+    // Create spiral stripes
+    stripes.fillStyle(hexColor, 0.9);
+    const numStripes = 6;
+    for (let i = 0; i < numStripes; i++) {
+      const angle = (i / numStripes) * Math.PI * 2;
+      const nextAngle = ((i + 0.5) / numStripes) * Math.PI * 2;
+      
+      stripes.beginPath();
+      stripes.moveTo(0, 0);
+      stripes.arc(0, 0, halfSize - 2, angle, nextAngle, false);
+      stripes.closePath();
+      stripes.fillPath();
+    }
+
+    // Mask the stripes to circle shape
+    const mask = scene.add.circle(0, 0, halfSize - 1, 0xffffff);
+    mask.setVisible(false);
+
+    // Glossy shine
+    const shine = scene.add.graphics();
+    shine.fillStyle(0xffffff, 0.6);
+    shine.fillEllipse(-halfSize / 3, -halfSize / 3, halfSize / 2, halfSize / 3);
+
+    // Small highlight dot
+    const dot = scene.add.circle(-halfSize / 4, -halfSize / 4, 3, 0xffffff, 0.8);
+
+    // Subtle rotation animation
+    scene.tweens.add({
+      targets: stripes,
+      angle: 360,
+      duration: 10000,
+      repeat: -1,
+      ease: "Linear",
+    });
+
+    container.add([base, stripes, shine, dot]);
+    return container;
+  }
 }
