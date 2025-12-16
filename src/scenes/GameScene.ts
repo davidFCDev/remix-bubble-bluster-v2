@@ -11,6 +11,7 @@ interface Bubble {
   isWild?: boolean;
   isBomb?: boolean;
   isIceLance?: boolean;
+  isMagicGift?: boolean;
   sprite?:
     | Phaser.GameObjects.Arc
     | Phaser.GameObjects.Sprite
@@ -852,70 +853,14 @@ export class GameScene extends Phaser.Scene {
       this.applySkillVisuals(this.currentBubble, "Whitey");
       // this.playSound("sfx_special_whitey"); // Removed specific sound for now
     } else if (this.selectedCharacter.id === "Santa") {
-      // Gift Storm: Drop 3 random special bubbles onto the field
-      this.activateGiftStorm();
+      // Magic Gift: Transform all bubbles of touched color
+      this.currentBubble.isMagicGift = true;
+      this.currentBubble.color = "#FFD700"; // Golden color
+      this.applySkillVisuals(this.currentBubble, "Santa");
     }
 
     this.abilityAvailable = false;
     this.skillBtn.setAlpha(0.5);
-  }
-
-  activateGiftStorm() {
-    // Santa's Gift Storm: Destroy 3 random bubbles from the field
-    const bubblesOnField: { row: number; col: number }[] = [];
-
-    // Collect all bubble positions
-    for (let row = 0; row < this.GRID_HEIGHT; row++) {
-      for (let col = 0; col < this.GRID_WIDTH; col++) {
-        if (this.grid[row] && this.grid[row][col] !== null) {
-          bubblesOnField.push({ row, col });
-        }
-      }
-    }
-
-    // Randomly select up to 3 bubbles to destroy
-    const numToDestroy = Math.min(3, bubblesOnField.length);
-    const selectedBubbles: { row: number; col: number }[] = [];
-
-    for (let i = 0; i < numToDestroy; i++) {
-      if (bubblesOnField.length === 0) break;
-      const randomIndex = Math.floor(Math.random() * bubblesOnField.length);
-      selectedBubbles.push(bubblesOnField[randomIndex]);
-      bubblesOnField.splice(randomIndex, 1);
-    }
-
-    // Destroy selected bubbles with festive effect
-    selectedBubbles.forEach((pos, index) => {
-      this.time.delayedCall(index * 200, () => {
-        if (this.grid[pos.row] && this.grid[pos.row][pos.col] !== null) {
-          const color = this.grid[pos.row][pos.col]!;
-          this.grid[pos.row][pos.col] = null;
-
-          // Remove sprite
-          if (
-            this.bubbleSprites[pos.row] &&
-            this.bubbleSprites[pos.row][pos.col]
-          ) {
-            const sprite = this.bubbleSprites[pos.row][pos.col];
-            if (sprite) {
-              // Create gift/present particle effect
-              this.createGiftParticles(sprite.x, sprite.y + this.GRID_OFFSET_Y);
-              sprite.destroy();
-            }
-            this.bubbleSprites[pos.row][pos.col] = null;
-          }
-
-          this.score += 50;
-          this.playSound("sfx_pop");
-        }
-      });
-    });
-
-    // After all gifts are dropped, check for floating bubbles
-    this.time.delayedCall(numToDestroy * 200 + 100, () => {
-      this.removeFloatingBubbles();
-      this.updateUI();
-    });
   }
 
   createGiftParticles(x: number, y: number) {
@@ -1071,7 +1016,8 @@ export class GameScene extends Phaser.Scene {
           bubble.isSpecial ||
           bubble.isBomb ||
           bubble.isWild ||
-          bubble.isIceLance
+          bubble.isIceLance ||
+          bubble.isMagicGift
         ) {
           if (bubble.isIceLance) {
             // Align rotation with velocity for Ice Lance
@@ -1102,6 +1048,11 @@ export class GameScene extends Phaser.Scene {
             } else if (bubble.isIceLance) {
               color = 0xccffff; // Ice Blue
               size = 4;
+            } else if (bubble.isMagicGift) {
+              // Santa: Gold/Red festive trail
+              color = Math.random() > 0.5 ? 0xffd700 : 0xff0000;
+              size = 4;
+              duration = 400;
             }
 
             const p = this.add.circle(bubble.x, bubble.y, size, color);
@@ -1163,7 +1114,8 @@ export class GameScene extends Phaser.Scene {
           this.grid[pos.row][pos.col] === "SLIME" &&
           !bubble.isSpecial &&
           !bubble.isBomb &&
-          !bubble.isIceLance
+          !bubble.isIceLance &&
+          !bubble.isMagicGift
         ) {
           this.cureSlime(pos.row, pos.col, bubble.color);
           if (bubble.sprite) bubble.sprite.destroy();
@@ -1269,7 +1221,8 @@ export class GameScene extends Phaser.Scene {
                   this.grid[r][c] === "SLIME" &&
                   !bubble.isSpecial &&
                   !bubble.isBomb &&
-                  !bubble.isIceLance
+                  !bubble.isIceLance &&
+                  !bubble.isMagicGift
                 ) {
                   this.cureSlime(r, c, bubble.color);
                   if (bubble.sprite) bubble.sprite.destroy();
@@ -1567,6 +1520,78 @@ export class GameScene extends Phaser.Scene {
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
             "#FF6600"
+          );
+          sprite.destroy();
+          this.bubbleSprites[pos.row][pos.col] = null;
+        }
+        this.removeFloatingBubbles();
+        this.updateUI();
+      } else if (bubble.isMagicGift) {
+        // Magic Gift (Santa): Transform all bubbles of touched color to random colors
+        const neighbors = this.getNeighbors(pos.row, pos.col);
+        let closestNeighbor: { r: number; c: number; color: string } | null = null;
+        let minDistance = Infinity;
+
+        for (const n of neighbors) {
+          if (this.grid[n.r][n.c]) {
+            const { x: nx, y: ny } = this.getBubblePos(n.r, n.c);
+            const worldNy = ny + this.ceilingOffset + this.GRID_OFFSET_Y;
+            const dist = Phaser.Math.Distance.Between(bubble.x, bubble.y, nx, worldNy);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestNeighbor = { r: n.r, c: n.c, color: this.grid[n.r][n.c]! };
+            }
+          }
+        }
+
+        if (closestNeighbor && closestNeighbor.color) {
+          const targetColor = closestNeighbor.color;
+          // Special bubbles are immune
+          if (targetColor !== "ANCHOR" && targetColor !== "SLIME" && targetColor !== "STOP" && targetColor !== "BOMB" && targetColor !== "STONE") {
+            const transformedPositions: { r: number; c: number }[] = [];
+            const availableColors = GameSettings.colors.all.filter(c => c !== targetColor);
+
+            // Transform all bubbles of target color
+            for (let r = 0; r < this.GRID_HEIGHT; r++) {
+              const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
+              for (let c = 0; c < maxCols; c++) {
+                if (this.grid[r][c] === targetColor) {
+                  // Pick random new color (not the original)
+                  const newColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+                  this.grid[r][c] = newColor;
+                  transformedPositions.push({ r, c });
+
+                  // Update sprite visually
+                  if (this.bubbleSprites[r][c]) {
+                    const sprite = this.bubbleSprites[r][c]!;
+                    sprite.setFillStyle(Phaser.Display.Color.HexStringToColor(newColor).color);
+                    // Add sparkle effect
+                    this.createGiftParticles(sprite.x + this.gameContainer.x, sprite.y + this.gameContainer.y);
+                  }
+                }
+              }
+            }
+
+            // Check matches for all transformed bubbles
+            this.time.delayedCall(300, () => {
+              for (const pos of transformedPositions) {
+                if (this.grid[pos.r] && this.grid[pos.r][pos.c]) {
+                  this.checkAndRemoveMatches(pos.r, pos.c);
+                }
+              }
+              this.showCharacterSpeech("MERRY!");
+            });
+          }
+        }
+
+        // Destroy self
+        this.grid[pos.row][pos.col] = null;
+        if (this.bubbleSprites[pos.row][pos.col]) {
+          const sprite = this.bubbleSprites[pos.row][pos.col]!;
+          this.playPopAnimation(
+            sprite.x + this.gameContainer.x,
+            sprite.y + this.gameContainer.y,
+            "#FFD700"
           );
           sprite.destroy();
           this.bubbleSprites[pos.row][pos.col] = null;
@@ -2530,6 +2555,53 @@ export class GameScene extends Phaser.Scene {
       // For now, let's make it a spinning crystal.
 
       container.add([glow, crystal, core]);
+    } else if (charId === "Santa") {
+      // Magic Gift: Golden Present Sphere
+      // 1. Festive Glow (Golden)
+      const glow = this.add.circle(0, 0, size / 1.2, 0xffd700, 0.6);
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.3,
+        scale: 1.4,
+        yoyo: true,
+        repeat: -1,
+        duration: 500,
+      });
+
+      // 2. Main Body (Golden)
+      const bg = this.add.circle(0, 0, size / 2, 0xffd700);
+      bg.setStrokeStyle(2, 0xff0000); // Red ribbon stroke
+
+      // 3. Gift Ribbon (Cross pattern)
+      const ribbon = this.add.graphics();
+      ribbon.fillStyle(0xff0000, 1); // Red ribbon
+      ribbon.fillRect(-size / 2, -3, size, 6); // Horizontal ribbon
+      ribbon.fillRect(-3, -size / 2, 6, size); // Vertical ribbon
+
+      // 4. Bow on top
+      const bow = this.add.graphics();
+      bow.fillStyle(0xff0000, 1);
+      bow.fillCircle(-6, -size / 4, 5);
+      bow.fillCircle(6, -size / 4, 5);
+      bow.fillCircle(0, -size / 4, 4);
+
+      // 5. Sparkles
+      const sparkles = this.add.graphics();
+      sparkles.fillStyle(0xffffff, 0.9);
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const dist = size / 2 + 5;
+        sparkles.fillCircle(Math.cos(angle) * dist, Math.sin(angle) * dist, 2);
+      }
+      this.tweens.add({
+        targets: sparkles,
+        alpha: 0.3,
+        yoyo: true,
+        repeat: -1,
+        duration: 300,
+      });
+
+      container.add([glow, bg, ribbon, bow, sparkles]);
     }
   }
 

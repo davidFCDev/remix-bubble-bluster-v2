@@ -73,7 +73,7 @@ export const GameSettings = {
       name: "Santa",
       lore: "The jolly gift-giver from the North Pole, spreading holiday cheer one bubble at a time!",
       skillDesc:
-        "Gift Storm: Drops 3 random special bubbles (Wild, Bomb, or Ice) onto the field as presents from above!",
+        "Magic Gift: A golden present that transforms ALL bubbles of the touched color into random NEW colors!",
       hasSkill: true,
       spriteIdle:
         "https://remix.gg/blob/Y58Z5vSLnB41/santa-LrH37lKKrOuagQqChEa8YtehtKrSpo.webp?Le8q",
