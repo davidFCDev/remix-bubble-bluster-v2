@@ -184,7 +184,11 @@ export class StartScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    powerupsBtnContainer.add([powerupsBtnShadow, powerupsBtnBg, powerupsBtnText]);
+    powerupsBtnContainer.add([
+      powerupsBtnShadow,
+      powerupsBtnBg,
+      powerupsBtnText,
+    ]);
 
     powerupsBtnContainer.setInteractive({
       hitArea: new Phaser.Geom.Rectangle(

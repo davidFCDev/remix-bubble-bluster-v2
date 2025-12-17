@@ -226,9 +226,15 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Power-up hotkeys
-      this.input.keyboard.on("keydown-ONE", () => this.activatePowerup("extraLife"));
-      this.input.keyboard.on("keydown-TWO", () => this.activatePowerup("stopClock"));
-      this.input.keyboard.on("keydown-THREE", () => this.activatePowerup("freeze"));
+      this.input.keyboard.on("keydown-ONE", () =>
+        this.activatePowerup("extraLife")
+      );
+      this.input.keyboard.on("keydown-TWO", () =>
+        this.activatePowerup("stopClock")
+      );
+      this.input.keyboard.on("keydown-THREE", () =>
+        this.activatePowerup("freeze")
+      );
     }
 
     // Touch Controls (mobile only - not mouse)

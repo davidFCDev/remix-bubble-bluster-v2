@@ -60,7 +60,8 @@ export const GameSettings = {
       id: "extraLife",
       name: "Extra Life",
       icon: "❤️",
-      description: "On game over, restart the current level with your starting score",
+      description:
+        "On game over, restart the current level with your starting score",
       unlocked: false,
       cost: 100,
     },

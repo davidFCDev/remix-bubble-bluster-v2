@@ -31,38 +31,18 @@ export class PowerupsScene extends Phaser.Scene {
 
     // Subtitle explanation
     this.add
-      .text(
-        width / 2,
-        height * 0.16,
-        "Unlock once, use once per game!",
-        {
-          fontFamily: "Pixelify Sans",
-          fontSize: "24px",
-          color: "#FFFFFF",
-        }
-      )
-      .setOrigin(0.5);
-
-    // Info text
-    this.add
-      .text(
-        width / 2,
-        height * 0.21,
-        "Activate with keys [1] [2] [3] during gameplay.",
-        {
-          fontFamily: "Pixelify Sans",
-          fontSize: "18px",
-          color: "#AAAAAA",
-          align: "center",
-        }
-      )
+      .text(width / 2, height * 0.16, "Unlock once, use once per game!", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "24px",
+        color: "#FFFFFF",
+      })
       .setOrigin(0.5);
 
     // Create power-up cards
     const powerups = GameSettings.powerups;
-    const cardHeight = 140;
-    const startY = height * 0.34;
-    const spacing = cardHeight + 25;
+    const cardHeight = 150;
+    const startY = height * 0.32;
+    const spacing = cardHeight + 30;
 
     powerups.forEach((powerup, index) => {
       const card = this.createPowerupCard(
@@ -93,7 +73,13 @@ export class PowerupsScene extends Phaser.Scene {
 
     const btnBg = this.add.graphics();
     btnBg.fillStyle(0xb7ff00, 1); // Neon Green like other scenes
-    btnBg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 12);
+    btnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      12
+    );
 
     const btnText = this.add
       .text(0, 0, "BACK", {
@@ -129,73 +115,78 @@ export class PowerupsScene extends Phaser.Scene {
     keyNumber: number
   ): Phaser.GameObjects.Container {
     const { width } = this.cameras.main;
-    const cardWidth = width * 0.88;
-    const cardHeight = 130;
+    const cardWidth = width - 80;
+    const cardHeight = 140;
     const isUnlocked = this.registry.get(`powerup_${powerup.id}`) || false;
 
     const container = this.add.container(x, y);
 
-    // Card background
+    // Card background - same style as character cards
     const cardBg = this.add.graphics();
     cardBg.fillStyle(0x111111, 0.95);
-    cardBg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 16);
-    cardBg.lineStyle(3, isUnlocked ? 0xb7ff00 : 0x444444);
-    cardBg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 16);
+    cardBg.fillRoundedRect(
+      -cardWidth / 2,
+      -cardHeight / 2,
+      cardWidth,
+      cardHeight,
+      20
+    );
+    cardBg.lineStyle(4, 0xb7ff00); // Always green border like character cards
+    cardBg.strokeRoundedRect(
+      -cardWidth / 2,
+      -cardHeight / 2,
+      cardWidth,
+      cardHeight,
+      20
+    );
 
-    // Icon
+    // Icon - larger and centered vertically
     const icon = this.add
-      .text(-cardWidth / 2 + 45, 0, powerup.icon, {
-        fontSize: "42px",
+      .text(-cardWidth / 2 + 55, 0, powerup.icon, {
+        fontSize: "52px",
       })
       .setOrigin(0.5);
 
-    // Name
+    // Name - same style as character name
     const nameText = this.add
-      .text(-cardWidth / 2 + 95, -cardHeight / 4, powerup.name, {
+      .text(-cardWidth / 2 + 115, -cardHeight / 4 - 5, powerup.name, {
         fontFamily: "Pixelify Sans",
-        fontSize: "26px",
-        color: isUnlocked ? "#B7FF00" : "#FFFFFF",
+        fontSize: "32px",
+        color: "#B7FF00",
         fontStyle: "bold",
+        stroke: "#000000",
+        strokeThickness: 4,
       })
       .setOrigin(0, 0.5);
 
-    // Key binding hint
-    const keyHint = this.add
-      .text(-cardWidth / 2 + 95, 5, `Press [${keyNumber}] to activate`, {
-        fontFamily: "Pixelify Sans",
-        fontSize: "16px",
-        color: "#888888",
-      })
-      .setOrigin(0, 0.5);
-
-    // Description
+    // Description - same style as character lore
     const descText = this.add
-      .text(-cardWidth / 2 + 95, cardHeight / 4 + 5, powerup.description, {
+      .text(-cardWidth / 2 + 115, cardHeight / 6, powerup.description, {
         fontFamily: "Pixelify Sans",
-        fontSize: "14px",
-        color: "#AAAAAA",
-        wordWrap: { width: cardWidth - 200 },
+        fontSize: "18px",
+        color: "#FFFFFF",
+        wordWrap: { width: cardWidth - 250 },
       })
       .setOrigin(0, 0.5);
 
     // Unlock button or status
-    const unlockBtnWidth = 90;
-    const unlockBtnHeight = 40;
-    const btnX = cardWidth / 2 - 65;
+    const unlockBtnWidth = 100;
+    const unlockBtnHeight = 50;
+    const btnX = cardWidth / 2 - 70;
 
     if (isUnlocked) {
-      // Show "UNLOCKED" badge
+      // Show "READY" badge - same green as character select
       const badge = this.add
         .text(btnX, 0, "✓ READY", {
           fontFamily: "Pixelify Sans",
-          fontSize: "18px",
+          fontSize: "22px",
           color: "#B7FF00",
           fontStyle: "bold",
         })
         .setOrigin(0.5);
-      container.add([cardBg, icon, nameText, keyHint, descText, badge]);
+      container.add([cardBg, icon, nameText, descText, badge]);
     } else {
-      // Show unlock button
+      // Show unlock button - same style as SELECT button
       const unlockBtnBg = this.add.graphics();
       unlockBtnBg.fillStyle(0xb7ff00, 1);
       unlockBtnBg.fillRoundedRect(
@@ -203,13 +194,13 @@ export class PowerupsScene extends Phaser.Scene {
         -unlockBtnHeight / 2,
         unlockBtnWidth,
         unlockBtnHeight,
-        10
+        15
       );
 
       const unlockBtnText = this.add
         .text(btnX, 0, `${powerup.cost} 💰`, {
           fontFamily: "Pixelify Sans",
-          fontSize: "18px",
+          fontSize: "20px",
           color: "#000000",
           fontStyle: "bold",
         })
@@ -223,7 +214,14 @@ export class PowerupsScene extends Phaser.Scene {
         unlockBtnHeight
       );
 
-      container.add([cardBg, icon, nameText, keyHint, descText, unlockBtnBg, unlockBtnText]);
+      container.add([
+        cardBg,
+        icon,
+        nameText,
+        descText,
+        unlockBtnBg,
+        unlockBtnText,
+      ]);
 
       container.setInteractive({
         hitArea: new Phaser.Geom.Rectangle(
@@ -239,7 +237,10 @@ export class PowerupsScene extends Phaser.Scene {
       container.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
         // Check if click is on the button area
         const localX = pointer.x - x;
-        if (localX > btnX - unlockBtnWidth / 2 && localX < btnX + unlockBtnWidth / 2) {
+        if (
+          localX > btnX - unlockBtnWidth / 2 &&
+          localX < btnX + unlockBtnWidth / 2
+        ) {
           this.attemptUnlock(powerup);
         }
       });
