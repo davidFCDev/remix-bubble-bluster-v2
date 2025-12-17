@@ -2598,7 +2598,7 @@ export class GameScene extends Phaser.Scene {
       case "extraLife":
         // Extra life is passive - activates on game over
         if (this.hasExtraLife && !this.extraLifeUsed) {
-          this.showPowerupMessage("❤️ Extra Life is ready!");
+          this.showPowerupMessage("EXTRA LIFE READY!");
         }
         break;
 
@@ -2608,7 +2608,7 @@ export class GameScene extends Phaser.Scene {
           this.stopClockActive = true;
           this.hasStopClock = false;
           if (this.timerEvent) this.timerEvent.paused = true;
-          this.showPowerupMessage("⏱️ Time Stopped!");
+          this.showPowerupMessage("TIME STOPPED!");
           this.timerText.setColor("#00FFFF");
         }
         break;
@@ -2619,34 +2619,75 @@ export class GameScene extends Phaser.Scene {
           this.freezeActive = true;
           this.hasFreeze = false;
           this.ceilingFrozen = true;
-          this.showPowerupMessage("❄️ Ceiling Frozen!");
+          // Show the full freeze animation (flash, text, frost line)
+          this.showFreezeEffect();
         }
         break;
     }
   }
 
   /**
-   * Show a power-up activation message
+   * Show a power-up activation message with freeze-style animation
    */
   showPowerupMessage(message: string) {
     const { width, height } = this.cameras.main;
-    const msgText = this.add
-      .text(width / 2, height * 0.3, message, {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#FFFFFF",
-        stroke: "#000000",
-        strokeThickness: 5,
-      })
-      .setOrigin(0.5)
-      .setDepth(150);
 
+    // Flash effect
+    const flash = this.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x87ceeb,
+      0.5
+    );
+    flash.setDepth(50);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Text with freeze style
+    const msgText = this.add.text(width / 2, height / 2, message, {
+      fontSize: "52px",
+      color: "#ffffff",
+      fontFamily: "Pixelify Sans",
+      fontStyle: "bold",
+      stroke: "#0077be",
+      strokeThickness: 8,
+      shadow: {
+        offsetX: 3,
+        offsetY: 3,
+        color: "#004466",
+        blur: 5,
+        fill: true,
+      },
+    });
+    msgText.setOrigin(0.5);
+    msgText.setDepth(51);
+
+    // Scale in animation
+    msgText.setScale(0);
     this.tweens.add({
       targets: msgText,
-      alpha: 0,
-      y: height * 0.25,
-      duration: 1500,
-      onComplete: () => msgText.destroy(),
+      scale: 1,
+      duration: 300,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        // Hold for a moment then fade out
+        this.time.delayedCall(1800, () => {
+          this.tweens.add({
+            targets: msgText,
+            alpha: 0,
+            scale: 1.2,
+            duration: 500,
+            ease: "Power2",
+            onComplete: () => msgText.destroy(),
+          });
+        });
+      },
     });
   }
 

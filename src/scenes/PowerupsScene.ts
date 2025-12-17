@@ -2,13 +2,39 @@ import GameSettings from "../config/GameSettings";
 
 export class PowerupsScene extends Phaser.Scene {
   private powerupCards: Phaser.GameObjects.Container[] = [];
+  private unlockBtn!: Phaser.GameObjects.Container;
+  private creditsBadge!: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: "PowerupsScene" });
   }
 
+  private hasPowerups(): boolean {
+    return (
+      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ?? false
+    );
+  }
+
+  private purchasePowerups() {
+    try {
+      (window.FarcadeSDK as any)?.purchase?.("power-ups");
+      (window.FarcadeSDK as any)?.onPurchaseComplete?.((itemId: string) => {
+        if (itemId === "power-ups") {
+          // Unlock all power-ups in registry
+          GameSettings.powerups.forEach((powerup) => {
+            this.registry.set(`powerup_${powerup.id}`, true);
+          });
+          this.scene.restart();
+        }
+      });
+    } catch (e) {
+      console.error("Purchase error:", e);
+    }
+  }
+
   create() {
     const { width, height } = this.cameras.main;
+    const hasPowerups = this.hasPowerups();
 
     // Background
     this.add
@@ -31,7 +57,7 @@ export class PowerupsScene extends Phaser.Scene {
 
     // Subtitle explanation
     this.add
-      .text(width / 2, height * 0.17, "Unlock once, use once per game!", {
+      .text(width / 2, height * 0.17, "Unlock forever, use once per game!", {
         fontFamily: "Pixelify Sans",
         fontSize: "28px",
         color: "#FFFFFF",
@@ -54,10 +80,90 @@ export class PowerupsScene extends Phaser.Scene {
       this.powerupCards.push(card);
     });
 
+    // Unlock button (shown only if power-ups not purchased)
+    const unlockBtnWidth = 280;
+    const unlockBtnHeight = 70;
+    const unlockBtnY = height * 0.82;
+
+    this.unlockBtn = this.add.container(width / 2, unlockBtnY);
+
+    const unlockBtnShadow = this.add.graphics();
+    unlockBtnShadow.fillStyle(0x000000, 1);
+    unlockBtnShadow.fillRoundedRect(
+      -unlockBtnWidth / 2 + 8,
+      -unlockBtnHeight / 2 + 8,
+      unlockBtnWidth,
+      unlockBtnHeight,
+      15
+    );
+
+    const unlockBtnBg = this.add.graphics();
+    unlockBtnBg.fillStyle(0x4a2666, 1); // Darker purple (disabled look)
+    unlockBtnBg.fillRoundedRect(
+      -unlockBtnWidth / 2,
+      -unlockBtnHeight / 2,
+      unlockBtnWidth,
+      unlockBtnHeight,
+      15
+    );
+
+    const unlockBtnText = this.add
+      .text(0, 0, "BUY", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "42px",
+        color: "#888888", // Grayed out text
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.unlockBtn.add([unlockBtnShadow, unlockBtnBg, unlockBtnText]);
+    this.unlockBtn.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -unlockBtnWidth / 2,
+        -unlockBtnHeight / 2,
+        unlockBtnWidth,
+        unlockBtnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    this.unlockBtn.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.purchasePowerups();
+    });
+
+    // Credits badge below unlock button
+    this.creditsBadge = this.add.container(
+      width / 2,
+      unlockBtnY + unlockBtnHeight / 2 + 12
+    );
+
+    const badgeBg = this.add.graphics();
+    badgeBg.fillStyle(0xffd700, 1); // Gold color
+    badgeBg.lineStyle(3, 0x000000, 1); // Black border
+    badgeBg.fillRoundedRect(-90, -20, 180, 40, 12);
+    badgeBg.strokeRoundedRect(-90, -20, 180, 40, 12);
+
+    const badgeText = this.add
+      .text(0, 0, "100 Credits", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "26px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.creditsBadge.add([badgeBg, badgeText]);
+
+    // Show/hide unlock button based on purchase status
+    this.unlockBtn.setVisible(!hasPowerups);
+    this.creditsBadge.setVisible(!hasPowerups);
+
     // Back button
     const btnWidth = 280;
     const btnHeight = 70;
-    const btnY = height * 0.88;
+    const btnY = height * 0.94;
 
     const backBtn = this.add.container(width / 2, btnY);
 
