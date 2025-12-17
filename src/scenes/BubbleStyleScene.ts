@@ -53,7 +53,7 @@ export class BubbleStyleScene extends Phaser.Scene {
     this.styleDescText = this.add
       .text(width / 2, previewY + 200, "", {
         fontFamily: "Pixelify Sans",
-        fontSize: "24px",
+        fontSize: "28px",
         color: "#AAAAAA",
       })
       .setOrigin(0.5);
