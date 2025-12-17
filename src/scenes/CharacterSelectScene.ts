@@ -1,7 +1,7 @@
 import GameSettings from "../config/GameSettings";
 
 export class CharacterSelectScene extends Phaser.Scene {
-  private currentIndex: number = 0;
+  private currentIndex: number = 3; // Start with WitchKitty
   private charNameText!: Phaser.GameObjects.Text;
   private charLoreText!: Phaser.GameObjects.Text;
   private charSkillNameText!: Phaser.GameObjects.Text;

@@ -55,9 +55,12 @@ export class PowerupsScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Subtitle explanation
+    // Subtitle explanation - changes based on purchase status
+    const subtitleText = hasPowerups
+      ? "You've unlocked them! Use once per game."
+      : "Unlock forever, use once per game!";
     this.add
-      .text(width / 2, height * 0.17, "Unlock forever, use once per game!", {
+      .text(width / 2, height * 0.17, subtitleText, {
         fontFamily: "Pixelify Sans",
         fontSize: "28px",
         color: "#FFFFFF",
