@@ -11,6 +11,7 @@ export class CharacterSelectScene extends Phaser.Scene {
   private selectBtn!: Phaser.GameObjects.Container;
   private unlockBtn!: Phaser.GameObjects.Container;
   private creditsBadge!: Phaser.GameObjects.Container;
+  private epicBadge!: Phaser.GameObjects.Text;
   private btnY!: number;
   private cardHeight!: number;
 
@@ -223,11 +224,13 @@ export class CharacterSelectScene extends Phaser.Scene {
     });
 
     // Credits Badge (positioned to overlap unlock button slightly)
-    this.creditsBadge = this.add.container(0, this.btnY + btnHeight / 2 + 5);
+    this.creditsBadge = this.add.container(0, this.btnY + btnHeight / 2 + 12);
 
     const badgeBg = this.add.graphics();
     badgeBg.fillStyle(0xffd700, 1); // Gold color
+    badgeBg.lineStyle(3, 0x000000, 1); // Black border
     badgeBg.fillRoundedRect(-90, -20, 180, 40, 12);
+    badgeBg.strokeRoundedRect(-90, -20, 180, 40, 12);
 
     const badgeText = this.add
       .text(0, 0, "500 Credits", {
@@ -244,11 +247,23 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.unlockBtn.setVisible(false);
     this.creditsBadge.setVisible(false);
 
+    // Epic Badge (shown only for WitchKitty)
+    this.epicBadge = this.add
+      .text(0, -cardHeight * 0.05 + 40, "(Epic)", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "22px",
+        color: "#8B00FF", // Purple
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+    this.epicBadge.setVisible(false);
+
     // Removed hover effects as requested
 
     this.charPreviewContainer.add([
       this.charPreviewSprite,
       this.charNameText,
+      this.epicBadge,
       this.charLoreText,
       this.charSkillNameText,
       this.charSkillDescText,
@@ -340,6 +355,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Check if character is locked (WitchKitty requires purchase)
     const isLocked = char.id === "WitchKitty" && !this.hasEpicCharacter();
+    const isEpicCharacter = char.id === "WitchKitty";
 
     // Update sprite transparency based on lock status
     this.charPreviewSprite.setAlpha(isLocked ? 0.4 : 1);
@@ -348,6 +364,9 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.selectBtn.setVisible(!isLocked);
     this.unlockBtn.setVisible(isLocked);
     this.creditsBadge.setVisible(isLocked);
+    
+    // Show Epic badge only for WitchKitty
+    this.epicBadge.setVisible(isEpicCharacter);
   }
 
   hasEpicCharacter(): boolean {
