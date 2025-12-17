@@ -114,12 +114,13 @@ export class GameScene extends Phaser.Scene {
     this.recentColors = []; // Reset recent colors tracking
 
     // Initialize power-ups from registry (unlocked = available)
-    this.hasExtraLife = this.registry.get("powerup_extraLife") || false;
+    // DEV: Force all power-ups available for testing
+    this.hasExtraLife = true; // this.registry.get("powerup_extraLife") || false;
     this.extraLifeUsed = false;
-    this.hasStopClock = this.registry.get("powerup_stopClock") || false;
+    this.hasStopClock = true; // this.registry.get("powerup_stopClock") || false;
     this.stopClockUsed = false;
     this.stopClockActive = false;
-    this.hasFreeze = this.registry.get("powerup_freeze") || false;
+    this.hasFreeze = true; // this.registry.get("powerup_freeze") || false;
     this.freezeUsed = false;
     this.freezeActive = false;
     this.levelStartScore = 0;
