@@ -23,9 +23,9 @@ export class BubbleStyleScene extends Phaser.Scene {
     // Dark overlay
     this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);
 
-    // Title
+    // Title - positioned to match distance between style name and bubbles
     this.add
-      .text(width / 2, height * 0.1, "BUBBLE STYLE", {
+      .text(width / 2, height * 0.18, "BUBBLE STYLE", {
         fontFamily: "Pixelify Sans",
         fontSize: "64px",
         color: "#B7FF00",
@@ -85,12 +85,12 @@ export class BubbleStyleScene extends Phaser.Scene {
     };
 
     const leftArrow = this.add
-      .text(width * 0.15, previewY, "<", arrowStyle)
+      .text(width * 0.08, previewY, "<", arrowStyle)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
     const rightArrow = this.add
-      .text(width * 0.85, previewY, ">", arrowStyle)
+      .text(width * 0.92, previewY, ">", arrowStyle)
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
@@ -145,21 +145,6 @@ export class BubbleStyleScene extends Phaser.Scene {
     });
 
     selectBtn.on("pointerdown", () => this.selectStyle());
-
-    // Back button
-    const backBtn = this.add
-      .text(width * 0.1, height * 0.05, "← BACK", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "28px",
-        color: "#FFFFFF",
-      })
-      .setOrigin(0, 0.5)
-      .setInteractive({ useHandCursor: true });
-
-    backBtn.on("pointerdown", () => {
-      this.sound.play("sfx_button");
-      this.scene.start("StartScene");
-    });
 
     // Keyboard input
     this.input.keyboard?.on("keydown-LEFT", () => this.navigate(-1));

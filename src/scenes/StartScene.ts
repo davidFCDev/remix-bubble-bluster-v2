@@ -26,13 +26,13 @@ export class StartScene extends Phaser.Scene {
 
     // Subtitle "RELOADED"
     this.add
-      .text(width / 2, height * 0.25 + 160, "RELOADED", {
+      .text(width / 2, height * 0.25 + 150, "RELOADED", {
         fontFamily: "Pixelify Sans",
-        fontSize: "48px",
+        fontSize: "38px",
         color: "#FFFFFF",
         fontStyle: "italic",
         stroke: "#000000",
-        strokeThickness: 6,
+        strokeThickness: 5,
       })
       .setOrigin(0.5)
       .setShadow(0, 4, "#000000", 6, true, true);
@@ -96,7 +96,7 @@ export class StartScene extends Phaser.Scene {
     });
 
     // Style Button (below Start) - Same size as Start button
-    const btnSpacing = 95; // Uniform spacing between buttons
+    const btnSpacing = 105; // Uniform spacing between buttons
     const styleBtnY = btnY + btnSpacing;
 
     const styleBtnContainer = this.add.container(width / 2, styleBtnY);

@@ -31,9 +31,9 @@ export class PowerupsScene extends Phaser.Scene {
 
     // Subtitle explanation
     this.add
-      .text(width / 2, height * 0.16, "Unlock once, use once per game!", {
+      .text(width / 2, height * 0.17, "Unlock once, use once per game!", {
         fontFamily: "Pixelify Sans",
-        fontSize: "24px",
+        fontSize: "28px",
         color: "#FFFFFF",
       })
       .setOrigin(0.5);
@@ -147,9 +147,9 @@ export class PowerupsScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Name - same style as character name
+    // Name - same style as character name (centered vertically now)
     const nameText = this.add
-      .text(-cardWidth / 2 + 115, -cardHeight / 4 - 5, powerup.name, {
+      .text(-cardWidth / 2 + 115, -cardHeight / 5, powerup.name, {
         fontFamily: "Pixelify Sans",
         fontSize: "32px",
         color: "#B7FF00",
@@ -159,19 +159,17 @@ export class PowerupsScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5);
 
-    // Description - same style as character lore
+    // Description - larger text for better readability
     const descText = this.add
-      .text(-cardWidth / 2 + 115, cardHeight / 6, powerup.description, {
+      .text(-cardWidth / 2 + 115, cardHeight / 6 + 5, powerup.description, {
         fontFamily: "Pixelify Sans",
-        fontSize: "18px",
+        fontSize: "22px",
         color: "#FFFFFF",
-        wordWrap: { width: cardWidth - 250 },
+        wordWrap: { width: cardWidth - 200 },
       })
       .setOrigin(0, 0.5);
 
-    // Unlock button or status
-    const unlockBtnWidth = 100;
-    const unlockBtnHeight = 50;
+    // Status badge position
     const btnX = cardWidth / 2 - 70;
 
     if (isUnlocked) {
@@ -186,64 +184,16 @@ export class PowerupsScene extends Phaser.Scene {
         .setOrigin(0.5);
       container.add([cardBg, icon, nameText, descText, badge]);
     } else {
-      // Show unlock button - same style as SELECT button
-      const unlockBtnBg = this.add.graphics();
-      unlockBtnBg.fillStyle(0xb7ff00, 1);
-      unlockBtnBg.fillRoundedRect(
-        btnX - unlockBtnWidth / 2,
-        -unlockBtnHeight / 2,
-        unlockBtnWidth,
-        unlockBtnHeight,
-        15
-      );
-
-      const unlockBtnText = this.add
-        .text(btnX, 0, `${powerup.cost} 💰`, {
+      // Show "LOCKED" badge when not unlocked
+      const lockedBadge = this.add
+        .text(btnX, 0, "🔒 LOCKED", {
           fontFamily: "Pixelify Sans",
           fontSize: "20px",
-          color: "#000000",
+          color: "#888888",
           fontStyle: "bold",
         })
         .setOrigin(0.5);
-
-      // Make button interactive
-      const hitArea = new Phaser.Geom.Rectangle(
-        btnX - unlockBtnWidth / 2,
-        -unlockBtnHeight / 2,
-        unlockBtnWidth,
-        unlockBtnHeight
-      );
-
-      container.add([
-        cardBg,
-        icon,
-        nameText,
-        descText,
-        unlockBtnBg,
-        unlockBtnText,
-      ]);
-
-      container.setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(
-          -cardWidth / 2,
-          -cardHeight / 2,
-          cardWidth,
-          cardHeight
-        ),
-        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-        useHandCursor: true,
-      });
-
-      container.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-        // Check if click is on the button area
-        const localX = pointer.x - x;
-        if (
-          localX > btnX - unlockBtnWidth / 2 &&
-          localX < btnX + unlockBtnWidth / 2
-        ) {
-          this.attemptUnlock(powerup);
-        }
-      });
+      container.add([cardBg, icon, nameText, descText, lockedBadge]);
     }
 
     return container;
