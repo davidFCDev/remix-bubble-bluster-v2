@@ -113,14 +113,16 @@ export class GameScene extends Phaser.Scene {
     this.levelTime = GameSettings.gameplay.levelTime;
     this.recentColors = []; // Reset recent colors tracking
 
-    // Initialize power-ups from registry (unlocked = available)
-    // DEV: Force all power-ups available for testing
-    this.hasExtraLife = true; // this.registry.get("powerup_extraLife") || false;
+    // Initialize power-ups - only available if player purchased "power-ups" item
+    const hasPowerupsItem =
+      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ??
+      false;
+    this.hasExtraLife = hasPowerupsItem;
     this.extraLifeUsed = false;
-    this.hasStopClock = true; // this.registry.get("powerup_stopClock") || false;
+    this.hasStopClock = hasPowerupsItem;
     this.stopClockUsed = false;
     this.stopClockActive = false;
-    this.hasFreeze = true; // this.registry.get("powerup_freeze") || false;
+    this.hasFreeze = hasPowerupsItem;
     this.freezeUsed = false;
     this.freezeActive = false;
     this.levelStartScore = 0;
@@ -351,6 +353,17 @@ export class GameScene extends Phaser.Scene {
 
   createPowerupButtons() {
     const { width, height } = this.cameras.main;
+
+    // Check if player has purchased power-ups item
+    const hasPowerupsItem =
+      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ??
+      false;
+
+    // Don't show power-up buttons if player hasn't purchased the item
+    if (!hasPowerupsItem) {
+      return;
+    }
+
     // Position power-up buttons above SKILL button forming inverted triangle
     // SKILL is at (width/2 + 160, height - 60)
     // Power-ups go above it, spread horizontally
@@ -359,9 +372,9 @@ export class GameScene extends Phaser.Scene {
     const powerupY = skillY - 80; // Above skill button
     const horizontalSpread = 55; // Distance from center for each button
 
-    // DEV: Force unlocked for testing
-    const stopClockAvailable = true; // this.hasStopClock && !this.stopClockUsed
-    const freezeAvailable = true; // this.hasFreeze && !this.freezeUsed
+    // Power-ups only available if purchased and not used
+    const stopClockAvailable = this.hasStopClock && !this.stopClockUsed;
+    const freezeAvailable = this.hasFreeze && !this.freezeUsed;
 
     // Stop Clock Button (top left)
     this.stopClockBtn = this.createPowerupButton(
