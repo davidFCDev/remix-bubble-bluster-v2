@@ -40,7 +40,7 @@ export class StartScene extends Phaser.Scene {
     // Start Button
     const btnWidth = 320; // Slightly wider
     const btnHeight = 80;
-    const btnY = height * 0.58; // Moved down for better spacing
+    const btnY = height * 0.54; // Moved down for better spacing
 
     const startBtnContainer = this.add.container(width / 2, btnY);
 
