@@ -40,7 +40,7 @@ export class StartScene extends Phaser.Scene {
     // Start Button
     const btnWidth = 320; // Slightly wider
     const btnHeight = 80;
-    const btnY = height * 0.62; // Moved up to make room for 3 buttons
+    const btnY = height * 0.58; // Moved down for better spacing
 
     const startBtnContainer = this.add.container(width / 2, btnY);
 
@@ -96,11 +96,12 @@ export class StartScene extends Phaser.Scene {
     });
 
     // Style Button (below Start) - Same size as Start button
-    const btnSpacing = 105; // Uniform spacing between buttons
+    const btnSpacing = 115; // Uniform spacing between buttons
     const styleBtnY = btnY + btnSpacing;
 
     // Check if player has exclusive balls unlocked
-    const hasExclusiveBalls = window.FarcadeSDK?.purchasedItems?.includes("exclusive-balls") ?? false;
+    const hasExclusiveBalls =
+      window.FarcadeSDK?.purchasedItems?.includes("exclusive-balls") ?? false;
 
     if (hasExclusiveBalls) {
       // UNLOCKED: Show normal STYLE button
@@ -153,7 +154,7 @@ export class StartScene extends Phaser.Scene {
         this.scene.start("BubbleStyleScene");
       });
     } else {
-      // LOCKED: Show UNLOCK button with credits badge
+      // LOCKED: Show STYLE button disabled with credits badge
       const unlockBtnContainer = this.add.container(width / 2, styleBtnY);
 
       const unlockBtnShadow = this.add.graphics();
@@ -167,7 +168,7 @@ export class StartScene extends Phaser.Scene {
       );
 
       const unlockBtnBg = this.add.graphics();
-      unlockBtnBg.fillStyle(0x8b00ff, 1); // Purple
+      unlockBtnBg.fillStyle(0x4a2666, 1); // Darker purple (disabled look)
       unlockBtnBg.fillRoundedRect(
         -btnWidth / 2,
         -btnHeight / 2,
@@ -177,10 +178,10 @@ export class StartScene extends Phaser.Scene {
       );
 
       const unlockBtnText = this.add
-        .text(0, 0, `UNLOCK`, {
+        .text(0, 0, `STYLE`, {
           fontFamily: "Pixelify Sans",
           fontSize: "42px",
-          color: "#FFFFFF",
+          color: "#888888", // Grayed out text
           fontStyle: "bold",
         })
         .setOrigin(0.5);
