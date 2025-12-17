@@ -96,7 +96,7 @@ export class StartScene extends Phaser.Scene {
     });
 
     // Style Button (below Start) - Same size as Start button
-    const btnSpacing = 115; // Uniform spacing between buttons
+    const btnSpacing = 130; // Increased spacing between buttons
     const styleBtnY = btnY + btnSpacing;
 
     // Check if player has exclusive balls unlocked
