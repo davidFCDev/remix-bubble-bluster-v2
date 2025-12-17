@@ -99,56 +99,142 @@ export class StartScene extends Phaser.Scene {
     const btnSpacing = 105; // Uniform spacing between buttons
     const styleBtnY = btnY + btnSpacing;
 
-    const styleBtnContainer = this.add.container(width / 2, styleBtnY);
+    // Check if player has exclusive balls unlocked
+    const hasExclusiveBalls = window.FarcadeSDK
+      ? window.FarcadeSDK.hasItem("exclusive-balls")
+      : false;
 
-    const styleBtnShadow = this.add.graphics();
-    styleBtnShadow.fillStyle(0x000000, 1);
-    styleBtnShadow.fillRoundedRect(
-      -btnWidth / 2 + 8,
-      -btnHeight / 2 + 8,
-      btnWidth,
-      btnHeight,
-      15
-    );
+    if (hasExclusiveBalls) {
+      // UNLOCKED: Show normal STYLE button
+      const styleBtnContainer = this.add.container(width / 2, styleBtnY);
 
-    const styleBtnBg = this.add.graphics();
-    styleBtnBg.fillStyle(0x9932cc, 1); // Purple
-    styleBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      15
-    );
+      const styleBtnShadow = this.add.graphics();
+      styleBtnShadow.fillStyle(0x000000, 1);
+      styleBtnShadow.fillRoundedRect(
+        -btnWidth / 2 + 8,
+        -btnHeight / 2 + 8,
+        btnWidth,
+        btnHeight,
+        15
+      );
 
-    // Get current style name from registry
-    const currentStyleId = this.registry.get("bubbleStyle") || "classic";
-    const styleBtnText = this.add
-      .text(0, 0, `STYLE`, {
-        fontFamily: "Pixelify Sans",
-        fontSize: "42px",
-        color: "#FFFFFF",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    styleBtnContainer.add([styleBtnShadow, styleBtnBg, styleBtnText]);
-
-    styleBtnContainer.setInteractive({
-      hitArea: new Phaser.Geom.Rectangle(
+      const styleBtnBg = this.add.graphics();
+      styleBtnBg.fillStyle(0x9932cc, 1); // Purple
+      styleBtnBg.fillRoundedRect(
         -btnWidth / 2,
         -btnHeight / 2,
         btnWidth,
-        btnHeight
-      ),
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
+        btnHeight,
+        15
+      );
 
-    styleBtnContainer.on("pointerdown", () => {
-      this.sound.play("sfx_button");
-      this.scene.start("BubbleStyleScene");
-    });
+      const styleBtnText = this.add
+        .text(0, 0, `STYLE`, {
+          fontFamily: "Pixelify Sans",
+          fontSize: "42px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5);
+
+      styleBtnContainer.add([styleBtnShadow, styleBtnBg, styleBtnText]);
+
+      styleBtnContainer.setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(
+          -btnWidth / 2,
+          -btnHeight / 2,
+          btnWidth,
+          btnHeight
+        ),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true,
+      });
+
+      styleBtnContainer.on("pointerdown", () => {
+        this.sound.play("sfx_button");
+        this.scene.start("BubbleStyleScene");
+      });
+    } else {
+      // LOCKED: Show UNLOCK button with credits badge
+      const unlockBtnContainer = this.add.container(width / 2, styleBtnY);
+
+      const unlockBtnShadow = this.add.graphics();
+      unlockBtnShadow.fillStyle(0x000000, 1);
+      unlockBtnShadow.fillRoundedRect(
+        -btnWidth / 2 + 8,
+        -btnHeight / 2 + 8,
+        btnWidth,
+        btnHeight,
+        15
+      );
+
+      const unlockBtnBg = this.add.graphics();
+      unlockBtnBg.fillStyle(0x8b00ff, 1); // Purple
+      unlockBtnBg.fillRoundedRect(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight,
+        15
+      );
+
+      const unlockBtnText = this.add
+        .text(0, 0, `UNLOCK`, {
+          fontFamily: "Pixelify Sans",
+          fontSize: "42px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5);
+
+      unlockBtnContainer.add([unlockBtnShadow, unlockBtnBg, unlockBtnText]);
+
+      // Credits Badge
+      const badgeBg = this.add.graphics();
+      badgeBg.fillStyle(0xffd700, 1); // Gold color
+      badgeBg.lineStyle(3, 0x000000, 1); // Black border
+      badgeBg.fillRoundedRect(-90, -20, 180, 40, 12);
+      badgeBg.strokeRoundedRect(-90, -20, 180, 40, 12);
+
+      const badgeText = this.add
+        .text(0, 0, "10 Credits", {
+          fontFamily: "Pixelify Sans",
+          fontSize: "26px",
+          color: "#000000",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5);
+
+      const creditsBadge = this.add.container(
+        width / 2,
+        styleBtnY + btnHeight / 2 + 12
+      );
+      creditsBadge.add([badgeBg, badgeText]);
+
+      unlockBtnContainer.setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(
+          -btnWidth / 2,
+          -btnHeight / 2,
+          btnWidth,
+          btnHeight
+        ),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true,
+      });
+
+      unlockBtnContainer.on("pointerdown", () => {
+        this.sound.play("sfx_button");
+        if (window.FarcadeSDK) {
+          window.FarcadeSDK.purchase({ item: "exclusive-balls" });
+          window.FarcadeSDK.onPurchaseComplete((success) => {
+            if (success) {
+              // Restart scene to refresh UI
+              this.scene.restart();
+            }
+          });
+        }
+      });
+    }
 
     // Power-ups Button (below Style)
     const powerupsBtnY = styleBtnY + btnSpacing;
