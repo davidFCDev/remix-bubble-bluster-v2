@@ -185,7 +185,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.unlockBtn = this.add.container(0, this.btnY);
 
     const unlockBtnBg = this.add.graphics();
-    unlockBtnBg.fillStyle(0xff6b00, 1); // Orange color for unlock
+    unlockBtnBg.fillStyle(0x8b00ff, 1); // Purple color for unlock
     unlockBtnBg.fillRoundedRect(
       -btnWidth / 2,
       -btnHeight / 2,
@@ -222,17 +222,17 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.purchaseCharacter();
     });
 
-    // Credits Badge (positioned below unlock button)
-    this.creditsBadge = this.add.container(0, this.btnY + btnHeight / 2 + 18);
+    // Credits Badge (positioned to overlap unlock button slightly)
+    this.creditsBadge = this.add.container(0, this.btnY + btnHeight / 2 + 5);
 
     const badgeBg = this.add.graphics();
     badgeBg.fillStyle(0xffd700, 1); // Gold color
-    badgeBg.fillRoundedRect(-70, -15, 140, 30, 10);
+    badgeBg.fillRoundedRect(-90, -20, 180, 40, 12);
 
     const badgeText = this.add
-      .text(0, 0, "💰 500 Credits", {
+      .text(0, 0, "500 Credits", {
         fontFamily: "Pixelify Sans",
-        fontSize: "20px",
+        fontSize: "26px",
         color: "#000000",
         fontStyle: "bold",
       })
@@ -340,10 +340,10 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Check if character is locked (WitchKitty requires purchase)
     const isLocked = char.id === "WitchKitty" && !this.hasEpicCharacter();
-    
+
     // Update sprite transparency based on lock status
     this.charPreviewSprite.setAlpha(isLocked ? 0.4 : 1);
-    
+
     // Toggle buttons visibility
     this.selectBtn.setVisible(!isLocked);
     this.unlockBtn.setVisible(isLocked);
@@ -351,6 +351,9 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   hasEpicCharacter(): boolean {
+    // DEV: Force locked for testing - remove this line for production
+    return false;
+    
     // Check if player has purchased the epic character via SDK
     if (window.FarcadeSDK) {
       return window.FarcadeSDK.hasItem("new-epic-character");
@@ -361,7 +364,7 @@ export class CharacterSelectScene extends Phaser.Scene {
   purchaseCharacter() {
     if (window.FarcadeSDK) {
       window.FarcadeSDK.purchase({ item: "new-epic-character" });
-      
+
       // Listen for purchase completion
       window.FarcadeSDK.onPurchaseComplete((success) => {
         if (success) {
