@@ -347,30 +347,31 @@ export class GameScene extends Phaser.Scene {
 
   createPowerupButtons() {
     const { width, height } = this.cameras.main;
-    // Position power-up buttons between character and launcher
-    // Center Y between LIMIT_LINE_Y (height-200) and bottom (height)
-    // So center is at height - 100
-    const btnX = 210;
-    const centerY = height - 100;
-    const spacing = 100; // More separation between buttons
+    // Position power-up buttons above SKILL button forming inverted triangle
+    // SKILL is at (width/2 + 160, height - 80)
+    // Power-ups go above it, spread horizontally
+    const skillX = width / 2 + 160;
+    const skillY = height - 80;
+    const powerupY = skillY - 85; // Above skill button
+    const horizontalSpread = 55; // Distance from center for each button
 
     // DEV: Force unlocked for testing
     const stopClockAvailable = true; // this.hasStopClock && !this.stopClockUsed
     const freezeAvailable = true; // this.hasFreeze && !this.freezeUsed
 
-    // Stop Clock Button (top)
+    // Stop Clock Button (top left)
     this.stopClockBtn = this.createPowerupButton(
-      btnX,
-      centerY - spacing / 2,
+      skillX - horizontalSpread,
+      powerupY,
       "⏱️",
       "stopClock",
       stopClockAvailable
     );
 
-    // Freeze Button (bottom)
+    // Freeze Button (top right)
     this.freezeBtn = this.createPowerupButton(
-      btnX,
-      centerY + spacing / 2,
+      skillX + horizontalSpread,
+      powerupY,
       "❄️",
       "freeze",
       freezeAvailable
