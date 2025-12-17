@@ -371,10 +371,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   hasEpicCharacter(): boolean {
     // Check if player has purchased the epic character via SDK
-    if (window.FarcadeSDK) {
-      return window.FarcadeSDK.hasItem("new-epic-character");
-    }
-    return false;
+    return window.FarcadeSDK?.purchasedItems?.includes("new-epic-character") ?? false;
   }
 
   purchaseCharacter() {

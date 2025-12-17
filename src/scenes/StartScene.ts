@@ -100,9 +100,7 @@ export class StartScene extends Phaser.Scene {
     const styleBtnY = btnY + btnSpacing;
 
     // Check if player has exclusive balls unlocked
-    const hasExclusiveBalls = window.FarcadeSDK
-      ? window.FarcadeSDK.hasItem("exclusive-balls")
-      : false;
+    const hasExclusiveBalls = window.FarcadeSDK?.purchasedItems?.includes("exclusive-balls") ?? false;
 
     if (hasExclusiveBalls) {
       // UNLOCKED: Show normal STYLE button
