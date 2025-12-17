@@ -184,16 +184,8 @@ export class PowerupsScene extends Phaser.Scene {
         .setOrigin(0.5);
       container.add([cardBg, icon, nameText, descText, badge]);
     } else {
-      // Show "LOCKED" badge when not unlocked
-      const lockedBadge = this.add
-        .text(btnX, 0, "🔒 LOCKED", {
-          fontFamily: "Pixelify Sans",
-          fontSize: "20px",
-          color: "#888888",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
-      container.add([cardBg, icon, nameText, descText, lockedBadge]);
+      // Just show the card without any badge
+      container.add([cardBg, icon, nameText, descText]);
     }
 
     return container;
