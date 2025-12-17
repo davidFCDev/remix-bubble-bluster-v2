@@ -347,11 +347,12 @@ export class GameScene extends Phaser.Scene {
 
   createPowerupButtons() {
     const { width, height } = this.cameras.main;
-    // Position power-up buttons between character (x=80) and launcher (x=width/2)
-    // Character is at x=80, launcher at width/2 (360). Midpoint around 220
-    const btnX = 180;
-    const btnBaseY = height - 170;
-    const spacing = 80;
+    // Position power-up buttons between character and launcher
+    // Center Y between LIMIT_LINE_Y (height-200) and bottom (height)
+    // So center is at height - 100
+    const btnX = 210;
+    const centerY = height - 100;
+    const spacing = 100; // More separation between buttons
 
     // DEV: Force unlocked for testing
     const stopClockAvailable = true; // this.hasStopClock && !this.stopClockUsed
@@ -360,7 +361,7 @@ export class GameScene extends Phaser.Scene {
     // Stop Clock Button (top)
     this.stopClockBtn = this.createPowerupButton(
       btnX,
-      btnBaseY,
+      centerY - spacing / 2,
       "⏱️",
       "stopClock",
       stopClockAvailable
@@ -369,7 +370,7 @@ export class GameScene extends Phaser.Scene {
     // Freeze Button (bottom)
     this.freezeBtn = this.createPowerupButton(
       btnX,
-      btnBaseY + spacing,
+      centerY + spacing / 2,
       "❄️",
       "freeze",
       freezeAvailable
@@ -385,22 +386,22 @@ export class GameScene extends Phaser.Scene {
   ): Phaser.GameObjects.Container {
     const btn = this.add.container(x, y);
 
-    // Button background
+    // Button background - using neon green like skill button
     const bg = this.add
-      .circle(0, 0, 40, 0x000000)
-      .setStrokeStyle(3, isAvailable ? 0xffd700 : 0x444444);
-    const inner = this.add.circle(0, 0, 32, isAvailable ? 0xffd700 : 0x222222, 0.3);
+      .circle(0, 0, 42, 0x000000)
+      .setStrokeStyle(4, isAvailable ? 0xb7ff00 : 0x444444); // Neon green border
+    const inner = this.add.circle(0, 0, 34, isAvailable ? 0xb7ff00 : 0x222222, 0.2);
 
-    // Icon
+    // Icon - larger font
     const text = this.add
       .text(0, 0, icon, {
         fontFamily: "Pixelify Sans",
-        fontSize: "32px",
+        fontSize: "42px",
       })
       .setOrigin(0.5);
 
     btn.add([bg, inner, text]);
-    btn.setSize(80, 80);
+    btn.setSize(84, 84);
 
     if (isAvailable) {
       btn.setInteractive({ useHandCursor: true });
