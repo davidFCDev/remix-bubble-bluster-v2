@@ -364,15 +364,12 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.selectBtn.setVisible(!isLocked);
     this.unlockBtn.setVisible(isLocked);
     this.creditsBadge.setVisible(isLocked);
-    
+
     // Show Epic badge only for WitchKitty
     this.epicBadge.setVisible(isEpicCharacter);
   }
 
   hasEpicCharacter(): boolean {
-    // DEV: Force locked for testing - remove this line for production
-    return false;
-    
     // Check if player has purchased the epic character via SDK
     if (window.FarcadeSDK) {
       return window.FarcadeSDK.hasItem("new-epic-character");
