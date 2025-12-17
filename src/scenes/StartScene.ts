@@ -96,7 +96,8 @@ export class StartScene extends Phaser.Scene {
     });
 
     // Style Button (below Start) - Same size as Start button
-    const styleBtnY = btnY + 100;
+    const btnSpacing = 95; // Uniform spacing between buttons
+    const styleBtnY = btnY + btnSpacing;
 
     const styleBtnContainer = this.add.container(width / 2, styleBtnY);
 
@@ -150,7 +151,7 @@ export class StartScene extends Phaser.Scene {
     });
 
     // Power-ups Button (below Style)
-    const powerupsBtnY = btnY + 180;
+    const powerupsBtnY = styleBtnY + btnSpacing;
 
     const powerupsBtnContainer = this.add.container(width / 2, powerupsBtnY);
 
@@ -165,7 +166,7 @@ export class StartScene extends Phaser.Scene {
     );
 
     const powerupsBtnBg = this.add.graphics();
-    powerupsBtnBg.fillStyle(0xffd700, 1); // Gold
+    powerupsBtnBg.fillStyle(0x01003d, 1); // Dark Blue
     powerupsBtnBg.fillRoundedRect(
       -btnWidth / 2,
       -btnHeight / 2,
@@ -178,7 +179,7 @@ export class StartScene extends Phaser.Scene {
       .text(0, 0, "POWER-UPS", {
         fontFamily: "Pixelify Sans",
         fontSize: "42px",
-        color: "#000000",
+        color: "#FFFFFF",
         fontStyle: "bold",
       })
       .setOrigin(0.5);
