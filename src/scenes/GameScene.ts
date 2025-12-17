@@ -55,6 +55,8 @@ export class GameScene extends Phaser.Scene {
   private ceilingGraphics!: Phaser.GameObjects.Graphics;
   private gameContainer!: Phaser.GameObjects.Container;
   private skillBtn!: Phaser.GameObjects.Container;
+  private stopClockBtn!: Phaser.GameObjects.Container;
+  private freezeBtn!: Phaser.GameObjects.Container;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: any;
   private characterSprite!: Phaser.GameObjects.Sprite;
@@ -212,6 +214,9 @@ export class GameScene extends Phaser.Scene {
     // Skill Button (Right of Launcher)
     this.createSkillButton();
 
+    // Power-up Buttons (Left of Launcher)
+    this.createPowerupButtons();
+
     // Input
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
@@ -339,6 +344,82 @@ export class GameScene extends Phaser.Scene {
 
     this.skillBtn = btn;
   }
+
+  createPowerupButtons() {
+    const { width, height } = this.cameras.main;
+    // Position power-up buttons to the left of the launcher
+    const btnY = height - 80;
+    const btnSize = 40;
+    const spacing = 90;
+
+    // Stop Clock Button (leftmost)
+    const stopClockX = width / 2 - 160;
+    this.stopClockBtn = this.createPowerupButton(
+      stopClockX,
+      btnY,
+      "⏱️",
+      "stopClock",
+      this.hasStopClock && !this.stopClockUsed
+    );
+
+    // Freeze Button
+    const freezeX = width / 2 - 160 + spacing;
+    this.freezeBtn = this.createPowerupButton(
+      freezeX,
+      btnY,
+      "❄️",
+      "freeze",
+      this.hasFreeze && !this.freezeUsed
+    );
+  }
+
+  createPowerupButton(
+    x: number,
+    y: number,
+    icon: string,
+    powerupId: string,
+    isAvailable: boolean
+  ): Phaser.GameObjects.Container {
+    const btn = this.add.container(x, y);
+
+    // Button background
+    const bg = this.add
+      .circle(0, 0, 40, 0x000000)
+      .setStrokeStyle(3, isAvailable ? 0xffd700 : 0x444444);
+    const inner = this.add.circle(0, 0, 32, isAvailable ? 0xffd700 : 0x222222, 0.3);
+
+    // Icon
+    const text = this.add
+      .text(0, 0, icon, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "32px",
+      })
+      .setOrigin(0.5);
+
+    btn.add([bg, inner, text]);
+    btn.setSize(80, 80);
+
+    if (isAvailable) {
+      btn.setInteractive({ useHandCursor: true });
+      btn.on("pointerdown", (pointer: any, localX: any, localY: any, event: any) => {
+        event.stopPropagation();
+        this.playSound("sfx_button");
+        this.activatePowerup(powerupId);
+        // Update button appearance after use
+        this.updatePowerupButtonState(btn, false);
+      });
+    } else {
+      btn.setAlpha(0.4);
+    }
+
+    return btn;
+  }
+
+  updatePowerupButtonState(btn: Phaser.GameObjects.Container, isAvailable: boolean) {
+    btn.setAlpha(isAvailable ? 1 : 0.4);
+    btn.disableInteractive();
+  }
+
   startGame() {
     this.gameStarted = true;
   }
