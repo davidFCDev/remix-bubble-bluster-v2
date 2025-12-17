@@ -55,6 +55,32 @@ export const GameSettings = {
       locked: false,
     },
   ],
+  powerups: [
+    {
+      id: "extraLife",
+      name: "Extra Life",
+      icon: "❤️",
+      description: "On game over, restart the current level with your starting score",
+      unlocked: false,
+      cost: 100,
+    },
+    {
+      id: "stopClock",
+      name: "Stop Clock",
+      icon: "⏱️",
+      description: "Pause the timer for the current level",
+      unlocked: false,
+      cost: 100,
+    },
+    {
+      id: "freeze",
+      name: "Freeze",
+      icon: "❄️",
+      description: "Stop the ceiling from descending for the current level",
+      unlocked: false,
+      cost: 100,
+    },
+  ],
   gameplay: {
     baseScorePerLevel: 2000,
     maxTimeBonus: 8000,

@@ -40,7 +40,7 @@ export class StartScene extends Phaser.Scene {
     // Start Button
     const btnWidth = 320; // Slightly wider
     const btnHeight = 80;
-    const btnY = height * 0.7; // Moved up more to make room for Style button
+    const btnY = height * 0.62; // Moved up to make room for 3 buttons
 
     const startBtnContainer = this.add.container(width / 2, btnY);
 
@@ -149,8 +149,60 @@ export class StartScene extends Phaser.Scene {
       this.scene.start("BubbleStyleScene");
     });
 
+    // Power-ups Button (below Style)
+    const powerupsBtnY = btnY + 180;
+
+    const powerupsBtnContainer = this.add.container(width / 2, powerupsBtnY);
+
+    const powerupsBtnShadow = this.add.graphics();
+    powerupsBtnShadow.fillStyle(0x000000, 1);
+    powerupsBtnShadow.fillRoundedRect(
+      -btnWidth / 2 + 8,
+      -btnHeight / 2 + 8,
+      btnWidth,
+      btnHeight,
+      15
+    );
+
+    const powerupsBtnBg = this.add.graphics();
+    powerupsBtnBg.fillStyle(0xffd700, 1); // Gold
+    powerupsBtnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      15
+    );
+
+    const powerupsBtnText = this.add
+      .text(0, 0, "POWER-UPS", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "42px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    powerupsBtnContainer.add([powerupsBtnShadow, powerupsBtnBg, powerupsBtnText]);
+
+    powerupsBtnContainer.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    powerupsBtnContainer.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.scene.start("PowerupsScene");
+    });
+
     // Instructions Overlay
-    const overlayY = height * 0.55;
+    const overlayY = height * 0.48;
     const overlayHeight = 100; // Taller for larger text
 
     this.add.rectangle(

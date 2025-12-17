@@ -70,6 +70,17 @@ export class GameScene extends Phaser.Scene {
   private recentColors: string[] = []; // Track recent bubble colors to prevent 3+ consecutive
   private bubbleStyle: string = "classic"; // Selected bubble visual style
 
+  // Power-ups (one-time use per game)
+  private hasExtraLife: boolean = false;
+  private extraLifeUsed: boolean = false;
+  private hasStopClock: boolean = false;
+  private stopClockUsed: boolean = false;
+  private stopClockActive: boolean = false;
+  private hasFreeze: boolean = false;
+  private freezeUsed: boolean = false;
+  private freezeActive: boolean = false;
+  private levelStartScore: number = 0; // Score when level started (for extra life)
+
   // Constants
   private BUBBLE_SIZE!: number;
   private GRID_WIDTH = GameSettings.grid.width;
@@ -99,6 +110,17 @@ export class GameScene extends Phaser.Scene {
     this.canShoot = true;
     this.levelTime = GameSettings.gameplay.levelTime;
     this.recentColors = []; // Reset recent colors tracking
+
+    // Initialize power-ups from registry (unlocked = available)
+    this.hasExtraLife = this.registry.get("powerup_extraLife") || false;
+    this.extraLifeUsed = false;
+    this.hasStopClock = this.registry.get("powerup_stopClock") || false;
+    this.stopClockUsed = false;
+    this.stopClockActive = false;
+    this.hasFreeze = this.registry.get("powerup_freeze") || false;
+    this.freezeUsed = false;
+    this.freezeActive = false;
+    this.levelStartScore = 0;
   }
 
   create() {
@@ -202,6 +224,11 @@ export class GameScene extends Phaser.Scene {
           this.shootBubble();
         }
       });
+
+      // Power-up hotkeys
+      this.input.keyboard.on("keydown-ONE", () => this.activatePowerup("extraLife"));
+      this.input.keyboard.on("keydown-TWO", () => this.activatePowerup("stopClock"));
+      this.input.keyboard.on("keydown-THREE", () => this.activatePowerup("freeze"));
     }
 
     // Touch Controls (mobile only - not mouse)
@@ -363,9 +390,16 @@ export class GameScene extends Phaser.Scene {
     // Set Random Background
     this.setRandomBackground();
 
+    // Save score at level start (for Extra Life)
+    this.levelStartScore = this.score;
+
+    // Reset power-up effects for this level
+    this.stopClockActive = false;
+    this.freezeActive = false;
+    this.ceilingFrozen = false;
+
     // Reset Ceiling
     this.ceilingOffset = 0;
-    this.ceilingFrozen = false; // Reset ceiling frozen state each level
     this.shotCount = 0; // Reset shot count for ceiling drop
     // Remove frost line if it exists
     if ((this as any).frostLineContainer) {
@@ -2171,6 +2205,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   lowerCeiling() {
+    // Check if freeze power-up is active
+    if (this.freezeActive || this.ceilingFrozen) {
+      return;
+    }
+
     this.ceilingOffset += (this.BUBBLE_SIZE * Math.sqrt(3)) / 2;
     this.drawCeiling();
 
@@ -2373,6 +2412,13 @@ export class GameScene extends Phaser.Scene {
 
   handleGameOver(message: string) {
     if (this.gameOver) return;
+
+    // Check if Extra Life is available
+    if (this.hasExtraLife && !this.extraLifeUsed) {
+      this.useExtraLife();
+      return;
+    }
+
     this.gameOver = true;
     if (this.timerEvent) this.timerEvent.remove();
     this.playSound("sfx_game_over");
@@ -2384,6 +2430,116 @@ export class GameScene extends Phaser.Scene {
     if (window.FarcadeSDK) {
       window.FarcadeSDK.singlePlayer.actions.gameOver({ score: this.score });
     }
+  }
+
+  /**
+   * Use the Extra Life power-up to restart the current level
+   */
+  useExtraLife() {
+    this.extraLifeUsed = true;
+    this.hasExtraLife = false;
+
+    // Show revival message
+    const { width, height } = this.cameras.main;
+    const reviveText = this.add
+      .text(width / 2, height / 2, "❤️ EXTRA LIFE! ❤️", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "48px",
+        color: "#FF4444",
+        stroke: "#000000",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+
+    this.tweens.add({
+      targets: reviveText,
+      alpha: 0,
+      y: height / 2 - 100,
+      duration: 2000,
+      onComplete: () => {
+        reviveText.destroy();
+        // Restart the level with the starting score
+        this.restartLevel();
+      },
+    });
+  }
+
+  /**
+   * Restart the current level (used by Extra Life)
+   */
+  restartLevel() {
+    // Reset game state but keep level
+    this.score = this.levelStartScore;
+    this.gameOver = false;
+    this.gameStarted = false;
+
+    // Call startLevel which handles everything
+    this.startLevel();
+  }
+
+  /**
+   * Activate a power-up by ID
+   */
+  activatePowerup(powerupId: string) {
+    if (!this.gameStarted || this.gameOver) return;
+
+    const { width, height } = this.cameras.main;
+
+    switch (powerupId) {
+      case "extraLife":
+        // Extra life is passive - activates on game over
+        if (this.hasExtraLife && !this.extraLifeUsed) {
+          this.showPowerupMessage("❤️ Extra Life is ready!");
+        }
+        break;
+
+      case "stopClock":
+        if (this.hasStopClock && !this.stopClockUsed && !this.stopClockActive) {
+          this.stopClockUsed = true;
+          this.stopClockActive = true;
+          this.hasStopClock = false;
+          if (this.timerEvent) this.timerEvent.paused = true;
+          this.showPowerupMessage("⏱️ Time Stopped!");
+          this.timerText.setColor("#00FFFF");
+        }
+        break;
+
+      case "freeze":
+        if (this.hasFreeze && !this.freezeUsed && !this.freezeActive) {
+          this.freezeUsed = true;
+          this.freezeActive = true;
+          this.hasFreeze = false;
+          this.ceilingFrozen = true;
+          this.showPowerupMessage("❄️ Ceiling Frozen!");
+        }
+        break;
+    }
+  }
+
+  /**
+   * Show a power-up activation message
+   */
+  showPowerupMessage(message: string) {
+    const { width, height } = this.cameras.main;
+    const msgText = this.add
+      .text(width / 2, height * 0.3, message, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "36px",
+        color: "#FFFFFF",
+        stroke: "#000000",
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(150);
+
+    this.tweens.add({
+      targets: msgText,
+      alpha: 0,
+      y: height * 0.25,
+      duration: 1500,
+      onComplete: () => msgText.destroy(),
+    });
   }
 
   onTimerTick() {

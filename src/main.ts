@@ -3,6 +3,7 @@ import GameSettings from "./config/GameSettings";
 import { BubbleStyleScene } from "./scenes/BubbleStyleScene";
 import { CharacterSelectScene } from "./scenes/CharacterSelectScene";
 import { GameScene } from "./scenes/GameScene";
+import { PowerupsScene } from "./scenes/PowerupsScene";
 import { PreloadScene } from "./scenes/PreloadScene";
 import { StartScene } from "./scenes/StartScene";
 
@@ -24,6 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
     PreloadScene,
     StartScene,
     BubbleStyleScene,
+    PowerupsScene,
     CharacterSelectScene,
     GameScene,
   ],
