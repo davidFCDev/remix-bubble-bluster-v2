@@ -9,6 +9,10 @@ export class CharacterSelectScene extends Phaser.Scene {
   private charPreviewSprite!: Phaser.GameObjects.Sprite;
   private charPreviewContainer!: Phaser.GameObjects.Container;
   private selectBtn!: Phaser.GameObjects.Container;
+  private unlockBtn!: Phaser.GameObjects.Container;
+  private creditsBadge!: Phaser.GameObjects.Container;
+  private btnY!: number;
+  private cardHeight!: number;
 
   constructor() {
     super("CharacterSelectScene");
@@ -39,7 +43,8 @@ export class CharacterSelectScene extends Phaser.Scene {
     // Card Container
     // Calculate width to leave space for arrows (approx 100px each side)
     const cardWidth = width - 250;
-    const cardHeight = height * 0.65; // Reduced height
+    this.cardHeight = height * 0.65; // Reduced height
+    const cardHeight = this.cardHeight;
     const cardX = width / 2;
     const cardY = height / 2 + 40; // Shift down slightly more
 
@@ -131,9 +136,9 @@ export class CharacterSelectScene extends Phaser.Scene {
     // Select Button
     const btnWidth = 280;
     const btnHeight = 70;
-    const btnY = cardHeight / 2; // Positioned exactly on the border
+    this.btnY = cardHeight / 2; // Positioned exactly on the border
 
-    this.selectBtn = this.add.container(0, btnY);
+    this.selectBtn = this.add.container(0, this.btnY);
 
     // Button Background (Rounded Graphics)
     const btnBg = this.add.graphics();
@@ -176,6 +181,69 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.selectCharacter();
     });
 
+    // UNLOCK Button (for locked characters)
+    this.unlockBtn = this.add.container(0, this.btnY);
+
+    const unlockBtnBg = this.add.graphics();
+    unlockBtnBg.fillStyle(0xff6b00, 1); // Orange color for unlock
+    unlockBtnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      15
+    );
+
+    const unlockHitArea = new Phaser.Geom.Rectangle(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight
+    );
+    this.unlockBtn.setInteractive({
+      hitArea: unlockHitArea,
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    const unlockBtnText = this.add
+      .text(0, 0, "UNLOCK", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "36px",
+        color: "#FFFFFF",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.unlockBtn.add([unlockBtnBg, unlockBtnText]);
+
+    this.unlockBtn.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.purchaseCharacter();
+    });
+
+    // Credits Badge (positioned below unlock button)
+    this.creditsBadge = this.add.container(0, this.btnY + btnHeight / 2 + 18);
+
+    const badgeBg = this.add.graphics();
+    badgeBg.fillStyle(0xffd700, 1); // Gold color
+    badgeBg.fillRoundedRect(-70, -15, 140, 30, 10);
+
+    const badgeText = this.add
+      .text(0, 0, "💰 500 Credits", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "20px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.creditsBadge.add([badgeBg, badgeText]);
+
+    // Initially hide unlock elements
+    this.unlockBtn.setVisible(false);
+    this.creditsBadge.setVisible(false);
+
     // Removed hover effects as requested
 
     this.charPreviewContainer.add([
@@ -185,6 +253,8 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.charSkillNameText,
       this.charSkillDescText,
       this.selectBtn,
+      this.unlockBtn,
+      this.creditsBadge,
     ]);
 
     // Navigation Arrows
@@ -267,6 +337,39 @@ export class CharacterSelectScene extends Phaser.Scene {
       );
     }
     this.charPreviewSprite.play(`${char.id}_idle_anim`);
+
+    // Check if character is locked (WitchKitty requires purchase)
+    const isLocked = char.id === "WitchKitty" && !this.hasEpicCharacter();
+    
+    // Update sprite transparency based on lock status
+    this.charPreviewSprite.setAlpha(isLocked ? 0.4 : 1);
+    
+    // Toggle buttons visibility
+    this.selectBtn.setVisible(!isLocked);
+    this.unlockBtn.setVisible(isLocked);
+    this.creditsBadge.setVisible(isLocked);
+  }
+
+  hasEpicCharacter(): boolean {
+    // Check if player has purchased the epic character via SDK
+    if (window.FarcadeSDK) {
+      return window.FarcadeSDK.hasItem("new-epic-character");
+    }
+    return false;
+  }
+
+  purchaseCharacter() {
+    if (window.FarcadeSDK) {
+      window.FarcadeSDK.purchase({ item: "new-epic-character" });
+      
+      // Listen for purchase completion
+      window.FarcadeSDK.onPurchaseComplete((success) => {
+        if (success) {
+          // Refresh the display to show unlocked state
+          this.updateCharacterDisplay();
+        }
+      });
+    }
   }
 
   selectCharacter() {
