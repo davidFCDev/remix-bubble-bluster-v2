@@ -310,8 +310,11 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     // Position skill button to the right of the launcher (center)
     // Launcher is at width/2. Let's put it at width/2 + 160 (further away)
+    // Center the button group between LIMIT_LINE_Y (height-200) and bottom
+    // Group height is about 130px (power-ups at top, skill at bottom)
+    // Center of area is height-100, so skill goes at height-100+40 = height-60
     const btnX = width / 2 + 160;
-    const btnY = height - 80; // Slightly up from bottom
+    const btnY = height - 60; // Centered in bottom area
 
     const btn = this.add.container(btnX, btnY);
 
@@ -348,11 +351,11 @@ export class GameScene extends Phaser.Scene {
   createPowerupButtons() {
     const { width, height } = this.cameras.main;
     // Position power-up buttons above SKILL button forming inverted triangle
-    // SKILL is at (width/2 + 160, height - 80)
+    // SKILL is at (width/2 + 160, height - 60)
     // Power-ups go above it, spread horizontally
     const skillX = width / 2 + 160;
-    const skillY = height - 80;
-    const powerupY = skillY - 85; // Above skill button
+    const skillY = height - 60;
+    const powerupY = skillY - 80; // Above skill button
     const horizontalSpread = 55; // Distance from center for each button
 
     // DEV: Force unlocked for testing
@@ -391,7 +394,13 @@ export class GameScene extends Phaser.Scene {
     const bg = this.add
       .circle(0, 0, 42, 0x000000)
       .setStrokeStyle(4, isAvailable ? 0xb7ff00 : 0x444444); // Neon green border
-    const inner = this.add.circle(0, 0, 34, isAvailable ? 0xb7ff00 : 0x222222, 0.2);
+    const inner = this.add.circle(
+      0,
+      0,
+      34,
+      isAvailable ? 0xb7ff00 : 0x222222,
+      0.2
+    );
 
     // Icon - larger font
     const text = this.add
@@ -406,13 +415,16 @@ export class GameScene extends Phaser.Scene {
 
     if (isAvailable) {
       btn.setInteractive({ useHandCursor: true });
-      btn.on("pointerdown", (pointer: any, localX: any, localY: any, event: any) => {
-        event.stopPropagation();
-        this.playSound("sfx_button");
-        this.activatePowerup(powerupId);
-        // Update button appearance after use
-        this.updatePowerupButtonState(btn, false);
-      });
+      btn.on(
+        "pointerdown",
+        (pointer: any, localX: any, localY: any, event: any) => {
+          event.stopPropagation();
+          this.playSound("sfx_button");
+          this.activatePowerup(powerupId);
+          // Update button appearance after use
+          this.updatePowerupButtonState(btn, false);
+        }
+      );
     } else {
       btn.setAlpha(0.4);
     }
@@ -420,7 +432,10 @@ export class GameScene extends Phaser.Scene {
     return btn;
   }
 
-  updatePowerupButtonState(btn: Phaser.GameObjects.Container, isAvailable: boolean) {
+  updatePowerupButtonState(
+    btn: Phaser.GameObjects.Container,
+    isAvailable: boolean
+  ) {
     btn.setAlpha(isAvailable ? 1 : 0.4);
     btn.disableInteractive();
   }

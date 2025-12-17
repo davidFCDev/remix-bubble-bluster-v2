@@ -101,7 +101,8 @@ export class StartScene extends Phaser.Scene {
 
     // Check if player has exclusive balls unlocked
     const hasExclusiveBalls =
-      (window.FarcadeSDK as any)?.purchasedItems?.includes("exclusive-balls") ?? false;
+      (window.FarcadeSDK as any)?.purchasedItems?.includes("exclusive-balls") ??
+      false;
 
     if (hasExclusiveBalls) {
       // UNLOCKED: Show normal STYLE button
@@ -225,12 +226,14 @@ export class StartScene extends Phaser.Scene {
         this.sound.play("sfx_button");
         if (window.FarcadeSDK) {
           (window.FarcadeSDK as any).purchase({ item: "exclusive-balls" });
-          (window.FarcadeSDK as any).onPurchaseComplete((success: { success: boolean }) => {
-            if (success) {
-              // Restart scene to refresh UI
-              this.scene.restart();
+          (window.FarcadeSDK as any).onPurchaseComplete(
+            (success: { success: boolean }) => {
+              if (success) {
+                // Restart scene to refresh UI
+                this.scene.restart();
+              }
             }
-          });
+          );
         }
       });
     }
