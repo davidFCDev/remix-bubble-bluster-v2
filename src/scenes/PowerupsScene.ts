@@ -160,10 +160,10 @@ export class PowerupsScene extends Phaser.Scene {
     this.unlockBtn.setVisible(!hasPowerups);
     this.creditsBadge.setVisible(!hasPowerups);
 
-    // Back button
+    // Back button - position depends on whether BUY button is shown
     const btnWidth = 280;
     const btnHeight = 70;
-    const btnY = height * 0.94;
+    const btnY = hasPowerups ? height * 0.82 : height * 0.94;
 
     const backBtn = this.add.container(width / 2, btnY);
 
