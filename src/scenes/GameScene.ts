@@ -1547,6 +1547,9 @@ export class GameScene extends Phaser.Scene {
       this.grid[pos.row][pos.col] = bubble.color;
       this.createBubbleSprite(pos.row, pos.col, bubble.color);
 
+      // Apply bounce effect to neighboring bubbles
+      this.applyBounceEffect(pos.row, pos.col);
+
       // Handle Skills (Bomb, etc)
       if (bubble.isBomb) {
         // Bomb logic: Destroy neighbors in radius 2
@@ -2737,6 +2740,52 @@ export class GameScene extends Phaser.Scene {
           35,
           this.nextBubbles[idx]
         );
+      }
+    });
+  }
+
+  /**
+   * Apply a soft bounce effect to neighboring bubbles when a bubble attaches
+   */
+  applyBounceEffect(row: number, col: number) {
+    const neighbors = this.getNeighbors(row, col);
+    const impactPos = this.getBubblePos(row, col);
+
+    neighbors.forEach((n) => {
+      const sprite = this.bubbleSprites[n.r]?.[n.c];
+      if (sprite && !sprite.getData("bouncing")) {
+        sprite.setData("bouncing", true);
+
+        // Calculate direction away from impact point
+        const neighborPos = this.getBubblePos(n.r, n.c);
+        const dx = neighborPos.x - impactPos.x;
+        const dy = neighborPos.y - impactPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        // Normalize and scale the bounce distance (subtle effect)
+        const bounceDistance = 4;
+        const offsetX = (dx / dist) * bounceDistance;
+        const offsetY = (dy / dist) * bounceDistance;
+
+        // Store original position
+        const originalX = sprite.x;
+        const originalY = sprite.y;
+
+        // Bounce away then back
+        this.tweens.add({
+          targets: sprite,
+          x: originalX + offsetX,
+          y: originalY + offsetY,
+          duration: 60,
+          ease: "Quad.easeOut",
+          yoyo: true,
+          onComplete: () => {
+            sprite.setData("bouncing", false);
+            // Ensure sprite returns to exact original position
+            sprite.x = originalX;
+            sprite.y = originalY;
+          },
+        });
       }
     });
   }
