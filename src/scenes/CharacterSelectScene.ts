@@ -378,16 +378,53 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   purchaseCharacter() {
     if (window.FarcadeSDK) {
-      window.FarcadeSDK.purchase({ item: "new-epic-character" });
-
-      // Listen for purchase completion
-      window.FarcadeSDK.onPurchaseComplete((success) => {
-        if (success) {
-          // Refresh the display to show unlocked state
-          this.updateCharacterDisplay();
-        }
+      // Intentar usar la promesa si existe (definición en globals.d.ts)
+      const purchaseResult = window.FarcadeSDK.purchase?.({
+        item: "new-epic-character",
       });
+
+      if (purchaseResult && typeof purchaseResult.then === "function") {
+        purchaseResult
+          .then((result) => {
+            if (result && result.success) {
+              this.handlePurchaseSuccess();
+            }
+          })
+          .catch(console.error);
+      }
+
+      // Fallback: Listener para purchase completion (soporta ambos formatos observados)
+      if (window.FarcadeSDK.onPurchaseComplete) {
+        window.FarcadeSDK.onPurchaseComplete((data: any) => {
+          // Puede venir como string (itemId) o objeto { success: true }
+          const isSuccess =
+            data === "new-epic-character" ||
+            data === true ||
+            data?.success === true;
+
+          if (isSuccess) {
+            this.handlePurchaseSuccess();
+          }
+        });
+      }
     }
+  }
+
+  private handlePurchaseSuccess() {
+    // Asegurar que el item está en la lista localmente para actualización inmediata
+    if (window.FarcadeSDK) {
+      if (!window.FarcadeSDK.purchasedItems) {
+        window.FarcadeSDK.purchasedItems = [];
+      }
+      if (
+        !window.FarcadeSDK.purchasedItems.includes("new-epic-character")
+      ) {
+        window.FarcadeSDK.purchasedItems.push("new-epic-character");
+      }
+    }
+    
+    // Refrescar la UI
+    this.updateCharacterDisplay();
   }
 
   selectCharacter() {
