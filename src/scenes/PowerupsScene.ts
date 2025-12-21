@@ -39,7 +39,7 @@ export class PowerupsScene extends Phaser.Scene {
     // Background
     this.add
       .image(width / 2, height / 2, "bg_start")
-      .setDisplaySize(width, height);
+      .setDisplaySize(width * 1.1, height * 1.1);
 
     // Dark overlay
     this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);

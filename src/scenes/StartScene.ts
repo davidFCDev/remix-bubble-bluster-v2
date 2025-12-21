@@ -9,7 +9,7 @@ export class StartScene extends Phaser.Scene {
     // Background
     this.add
       .image(width / 2, height / 2, "bg_start")
-      .setDisplaySize(width, height);
+      .setDisplaySize(width * 1.1, height * 1.1);
 
     // Title
     const titleText = this.add

@@ -141,7 +141,7 @@ export class GameScene extends Phaser.Scene {
     // Background
     this.bgImage = this.add
       .image(width / 2, height / 2, "bg_level_0") // Default initial
-      .setDisplaySize(width, height);
+      .setDisplaySize(width * 1.1, height * 1.1);
 
     // Background Overlay
     this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
@@ -517,7 +517,7 @@ export class GameScene extends Phaser.Scene {
     if (!GameScene.extraAssetsLoaded) {
       this.lastBgIndex = 0;
       this.bgImage.setTexture("bg_level_0");
-      this.bgImage.setDisplaySize(width, height);
+      this.bgImage.setDisplaySize(width * 1.1, height * 1.1);
       return;
     }
 
@@ -533,7 +533,7 @@ export class GameScene extends Phaser.Scene {
 
     this.lastBgIndex = newIndex;
     this.bgImage.setTexture(`bg_level_${newIndex}`);
-    this.bgImage.setDisplaySize(width, height);
+    this.bgImage.setDisplaySize(width * 1.1, height * 1.1);
   }
 
   startLevel() {

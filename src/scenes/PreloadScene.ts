@@ -1,4 +1,3 @@
-
 import GameSettings from "../config/GameSettings";
 
 export class PreloadScene extends Phaser.Scene {
@@ -62,7 +61,10 @@ export class PreloadScene extends Phaser.Scene {
     // --- ASSETS PRIORITARIOS ---
     this.load.image("bg_start", GameSettings.assets.backgroundStart);
     this.load.image("bg_level_0", GameSettings.assets.backgroundsLevel[0]);
-    this.load.audio("bgm_0", { url: GameSettings.assets.music[0], type: "mp3" });
+    this.load.audio("bgm_0", {
+      url: GameSettings.assets.music[0],
+      type: "mp3",
+    });
 
     // SFX
     Object.entries(GameSettings.assets.sfx).forEach(([key, url]) => {
@@ -89,8 +91,10 @@ export class PreloadScene extends Phaser.Scene {
       GameSettings.characters.forEach((char: any) => {
         const idleTexture = this.textures.get(`${char.id}_idle`);
         const attackTexture = this.textures.get(`${char.id}_attack`);
-        if (idleTexture) idleTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-        if (attackTexture) attackTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        if (idleTexture)
+          idleTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        if (attackTexture)
+          attackTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
       });
       this.assetsLoaded = true;
       this.checkTransition();
@@ -111,13 +115,19 @@ export function loadExtraAssets(scene: Phaser.Scene): Promise<void> {
     let hasAssetsToLoad = false;
     for (let i = 1; i < GameSettings.assets.backgroundsLevel.length; i++) {
       if (!scene.textures.exists(`bg_level_${i}`)) {
-        scene.load.image(`bg_level_${i}`, GameSettings.assets.backgroundsLevel[i]);
+        scene.load.image(
+          `bg_level_${i}`,
+          GameSettings.assets.backgroundsLevel[i]
+        );
         hasAssetsToLoad = true;
       }
     }
     for (let i = 1; i < GameSettings.assets.music.length; i++) {
       if (!scene.cache.audio.exists(`bgm_${i}`)) {
-        scene.load.audio(`bgm_${i}`, { url: GameSettings.assets.music[i], type: "mp3" });
+        scene.load.audio(`bgm_${i}`, {
+          url: GameSettings.assets.music[i],
+          type: "mp3",
+        });
         hasAssetsToLoad = true;
       }
     }
