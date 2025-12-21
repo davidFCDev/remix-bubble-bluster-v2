@@ -29,9 +29,9 @@ export class PreloadScene extends Phaser.Scene {
       end: 17, // 18 frames - 1
     });
 
-    // Hacer que el último frame dure más (ej. 1000ms) para mejor efecto visual
+    // Hacer que el último frame dure más (ej. 500ms) para mejor efecto visual
     if (frames.length > 0) {
-      frames[frames.length - 1].duration = 1000;
+      frames[frames.length - 1].duration = 500;
     }
 
     this.anims.create({
