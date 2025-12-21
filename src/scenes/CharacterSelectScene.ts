@@ -416,13 +416,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       if (!window.FarcadeSDK.purchasedItems) {
         window.FarcadeSDK.purchasedItems = [];
       }
-      if (
-        !window.FarcadeSDK.purchasedItems.includes("new-epic-character")
-      ) {
+      if (!window.FarcadeSDK.purchasedItems.includes("new-epic-character")) {
         window.FarcadeSDK.purchasedItems.push("new-epic-character");
       }
     }
-    
+
     // Refrescar la UI
     this.updateCharacterDisplay();
   }

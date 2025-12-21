@@ -2,6 +2,7 @@ import GameSettings from "../config/GameSettings";
 
 export class PreloadScene extends Phaser.Scene {
   private assetsLoaded: boolean = false;
+  private fontsLoaded: boolean = false;
   private animationComplete: boolean = false;
   private bootSprite!: Phaser.GameObjects.Sprite;
 
@@ -65,6 +66,29 @@ export class PreloadScene extends Phaser.Scene {
       "https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"
     );
 
+    // Iniciar carga de fuentes cuando el script esté listo
+    this.load.on("filecomplete-script-webfont", () => {
+      // @ts-ignore
+      if (window.WebFont) {
+        // @ts-ignore
+        window.WebFont.load({
+          google: {
+            families: ["Pixelify Sans"],
+          },
+          active: () => {
+            console.log("Fonts loaded");
+            this.fontsLoaded = true;
+            this.checkTransition();
+          },
+          inactive: () => {
+            console.warn("Fonts failed to load");
+            this.fontsLoaded = true; // Continuar aunque falle
+            this.checkTransition();
+          },
+        });
+      }
+    });
+
     // --- ASSETS PRIORITARIOS ---
     this.load.image("bg_start", GameSettings.assets.backgroundStart);
     this.load.image("bg_level_0", GameSettings.assets.backgroundsLevel[0]);
@@ -88,20 +112,13 @@ export class PreloadScene extends Phaser.Scene {
         frameWidth: frameWidth,
         frameHeight: frameHeight,
       });
-      this.load.spritesheet(`${char.id}_attack`, char.spriteAttack, {
-        frameWidth: frameWidth,
-        frameHeight: frameHeight,
-      });
     });
 
     this.load.on("complete", () => {
       GameSettings.characters.forEach((char: any) => {
         const idleTexture = this.textures.get(`${char.id}_idle`);
-        const attackTexture = this.textures.get(`${char.id}_attack`);
         if (idleTexture)
           idleTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-        if (attackTexture)
-          attackTexture.setFilter(Phaser.Textures.FilterMode.NEAREST);
       });
       this.assetsLoaded = true;
       this.checkTransition();
@@ -110,7 +127,15 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private checkTransition(): void {
-    if (this.animationComplete && this.assetsLoaded) {
+    // Aseguramos que:
+    // 1. La animación de carga terminó
+    // 2. Todos los assets de la cola de Phaser cargaron (incluye sfx_button)
+    // 3. Las fuentes web cargaron
+    if (this.animationComplete && this.assetsLoaded && this.fontsLoaded) {
+      // Verificación extra de seguridad
+      if (!this.cache.audio.exists("sfx_button")) {
+        console.warn("sfx_button missing, but proceeding");
+      }
       this.scene.start("StartScene");
     }
   }
