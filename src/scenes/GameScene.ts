@@ -1,5 +1,6 @@
 import GameSettings from "../config/GameSettings";
 import { BubbleVisuals } from "../objects/BubbleVisuals";
+import { loadExtraAssets } from "./PreloadScene";
 
 interface Bubble {
   x: number;
@@ -22,6 +23,7 @@ export class GameScene extends Phaser.Scene {
   private static musicPlaylist: number[] = [];
   private static currentPlaylistIndex: number = 0;
   private static seenTutorials: Set<number> = new Set(); // Track which tutorials have been shown
+  private static extraAssetsLoaded: boolean = false; // Track if lazy-loaded assets están listos
 
   private grid: (string | null)[][] = [];
   private bubbleSprites: (Phaser.GameObjects.Arc | null)[][] = [];
@@ -298,6 +300,13 @@ export class GameScene extends Phaser.Scene {
 
     // Play Music
     this.playBackgroundMusic();
+
+    // Lazy load extra assets (bgm_1-3, bg_level_1-2) en segundo plano
+    if (!GameScene.extraAssetsLoaded) {
+      loadExtraAssets(this).then(() => {
+        GameScene.extraAssetsLoaded = true;
+      });
+    }
   }
 
   drawLimitLine() {
@@ -459,6 +468,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   playBackgroundMusic() {
+    // Si los assets extra no están cargados, solo usar bgm_0
+    if (!GameScene.extraAssetsLoaded) {
+      if (this.currentMusic) {
+        this.currentMusic.stop();
+      }
+      this.currentMusic = this.sound.add("bgm_0", {
+        volume: 0.3,
+        loop: true, // Loop bgm_0 hasta que los demás estén disponibles
+      });
+      this.currentMusic.play();
+      return;
+    }
+
     // Initialize playlist if empty
     if (GameScene.musicPlaylist.length === 0) {
       const indices = GameSettings.assets.music.map((_, i) => i);
@@ -489,9 +511,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   setRandomBackground() {
+    const { width, height } = this.cameras.main;
+
+    // Si los assets extra no están cargados, solo usar bg_level_0
+    if (!GameScene.extraAssetsLoaded) {
+      this.lastBgIndex = 0;
+      this.bgImage.setTexture("bg_level_0");
+      this.bgImage.setDisplaySize(width, height);
+      return;
+    }
+
     let newIndex;
-    // Try to pick a different background, but if it's the first time (lastBgIndex -1), just pick any.
-    // We have 3 backgrounds: 0, 1, 2
+    // Try to pick a different background, pero si es la primera vez (lastBgIndex -1), elige cualquiera.
     if (this.lastBgIndex === -1) {
       newIndex = Phaser.Math.Between(0, 2);
     } else {
@@ -502,8 +533,6 @@ export class GameScene extends Phaser.Scene {
 
     this.lastBgIndex = newIndex;
     this.bgImage.setTexture(`bg_level_${newIndex}`);
-
-    const { width, height } = this.cameras.main;
     this.bgImage.setDisplaySize(width, height);
   }
 
