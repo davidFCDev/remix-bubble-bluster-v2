@@ -24,12 +24,19 @@ export class PreloadScene extends Phaser.Scene {
 
   create(): void {
     // Crear animación
+    const frames = this.anims.generateFrameNumbers("bootSprite", {
+      start: 0,
+      end: 17, // 18 frames - 1
+    });
+
+    // Hacer que el último frame dure más (ej. 1000ms) para mejor efecto visual
+    if (frames.length > 0) {
+      frames[frames.length - 1].duration = 1000;
+    }
+
     this.anims.create({
       key: "boot",
-      frames: this.anims.generateFrameNumbers("bootSprite", {
-        start: 0,
-        end: 17, // 18 frames - 1
-      }),
+      frames: frames,
       frameRate: 12,
       repeat: 0, // Una sola vez, se queda en último frame
     });
