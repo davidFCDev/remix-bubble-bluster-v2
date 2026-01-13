@@ -201,7 +201,7 @@ export class GameScene extends Phaser.Scene {
     };
 
     this.scoreText = this.add
-      .text(width * 0.25, headerY, "Score: 0", fontStyle)
+      .text(width * 0.25, headerY, "0", fontStyle)
       .setOrigin(0.5);
 
     this.levelText = this.add
@@ -209,7 +209,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.timerText = this.add
-      .text(width * 0.75, headerY, "Time: 0", fontStyle)
+      .text(width * 0.75, headerY, "0", fontStyle)
       .setOrigin(0.5);
 
     // Next Bubbles UI (Bottom Right)
@@ -502,7 +502,7 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(3, 0xb7ff00);
     const styleInner = this.add.circle(0, 0, btnSize - 5, 0xb7ff00, 0.2);
     const styleIcon = this.add
-      .text(0, 0, "🎨", { fontSize: "22px" })
+      .text(0, 0, "🎨", { fontSize: "28px" })
       .setOrigin(0.5);
 
     this.styleBtn.add([styleBg, styleInner, styleIcon]);
@@ -3274,9 +3274,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateUI() {
-    this.scoreText.setText(`Score: ${this.score}`);
+    this.scoreText.setText(`${this.score}`);
     this.levelText.setText(`L: ${this.level}`);
-    this.timerText.setText(`Time: ${this.levelTime}s`);
+    this.timerText.setText(`${this.levelTime}s`);
     if (this.levelTime <= 10) {
       this.timerText.setColor("#FF0000");
     } else {
