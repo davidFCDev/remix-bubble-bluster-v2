@@ -487,20 +487,20 @@ export class GameScene extends Phaser.Scene {
       false;
 
     // Position buttons below the limit line, in a row
-    // Left: power-ups, Right: style
+    // Left: style, Right: power-ups
     const btnSize = 28;
     const baseY = this.LIMIT_LINE_Y + 25;
     const centerX = width / 2;
     const spacing = 50;
 
-    // Style button (always shown) - RIGHT side
-    const styleBtnX = hasPowerupsItem ? centerX : centerX + spacing;
+    // Style button (always shown) - LEFT side (using SKILL button style)
+    const styleBtnX = hasPowerupsItem ? centerX : centerX - spacing;
     this.styleBtn = this.add.container(styleBtnX, baseY);
 
     const styleBg = this.add
       .circle(0, 0, btnSize, 0x000000)
-      .setStrokeStyle(3, 0x9932cc);
-    const styleInner = this.add.circle(0, 0, btnSize - 5, 0x9932cc, 0.3);
+      .setStrokeStyle(3, 0xb7ff00);
+    const styleInner = this.add.circle(0, 0, btnSize - 5, 0xb7ff00, 0.2);
     const styleIcon = this.add
       .text(0, 0, "🎨", { fontSize: "22px" })
       .setOrigin(0.5);
@@ -526,14 +526,14 @@ export class GameScene extends Phaser.Scene {
       }
     );
 
-    // Power-ups button (only shown if NOT purchased) - LEFT side
+    // Power-ups button (only shown if NOT purchased) - RIGHT side (using SKILL button style)
     if (!hasPowerupsItem) {
-      this.powerupsBtn = this.add.container(centerX - spacing, baseY);
+      this.powerupsBtn = this.add.container(centerX + spacing, baseY);
 
       const powerupsBg = this.add
         .circle(0, 0, btnSize, 0x000000)
-        .setStrokeStyle(3, 0x01003d);
-      const powerupsInner = this.add.circle(0, 0, btnSize - 5, 0x01003d, 0.3);
+        .setStrokeStyle(3, 0xb7ff00);
+      const powerupsInner = this.add.circle(0, 0, btnSize - 5, 0xb7ff00, 0.2);
       const powerupsIcon = this.add
         .text(0, 0, "⚡", { fontSize: "22px" })
         .setOrigin(0.5);
@@ -644,14 +644,14 @@ export class GameScene extends Phaser.Scene {
     // Create overlay container
     this.styleOverlay = this.add.container(0, 0).setDepth(1000);
 
-    // Dark background
+    // Dark background (more opaque)
     const bg = this.add.rectangle(
       width / 2,
       height / 2,
       width,
       height,
       0x000000,
-      0.85
+      0.95
     );
     bg.setInteractive(); // Block clicks behind
 
@@ -681,7 +681,7 @@ export class GameScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
-    // Buy button
+    // Buy button (neon green style)
     const btnWidth = 280;
     const btnHeight = 70;
     const buyBtn = this.add.container(width / 2, height * 0.55);
@@ -697,7 +697,7 @@ export class GameScene extends Phaser.Scene {
     );
 
     const buyBtnBg = this.add.graphics();
-    buyBtnBg.fillStyle(0xffd700, 1);
+    buyBtnBg.fillStyle(0xb7ff00, 1);
     buyBtnBg.fillRoundedRect(
       -btnWidth / 2,
       -btnHeight / 2,
@@ -743,56 +743,23 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Back button
-    const backBtn = this.add.container(width / 2, height * 0.68);
-
-    const backBtnShadow = this.add.graphics();
-    backBtnShadow.fillStyle(0x000000, 1);
-    backBtnShadow.fillRoundedRect(
-      -btnWidth / 2 + 6,
-      -btnHeight / 2 + 6,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
-    const backBtnBg = this.add.graphics();
-    backBtnBg.fillStyle(0xb7ff00, 1);
-    backBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
+    // Back button (text only, no background)
     const backBtnText = this.add
-      .text(0, 0, "BACK", {
+      .text(width / 2, height * 0.68, "BACK", {
         fontFamily: "Pixelify Sans",
         fontSize: "36px",
-        color: "#000000",
+        color: "#B7FF00",
         fontStyle: "bold",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
 
-    backBtn.add([backBtnShadow, backBtnBg, backBtnText]);
-    backBtn.setInteractive({
-      hitArea: new Phaser.Geom.Rectangle(
-        -btnWidth / 2,
-        -btnHeight / 2,
-        btnWidth,
-        btnHeight
-      ),
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
-
-    backBtn.on("pointerdown", () => {
+    backBtnText.on("pointerdown", () => {
       this.playSound("sfx_button");
       this.hideStyleOverlay();
     });
 
-    this.styleOverlay.add([bg, title, subtitle, buyBtn, backBtn]);
+    this.styleOverlay.add([bg, title, subtitle, buyBtn, backBtnText]);
   }
 
   hideStyleOverlay() {
@@ -807,14 +774,14 @@ export class GameScene extends Phaser.Scene {
     // Create overlay container
     this.powerupsOverlay = this.add.container(0, 0).setDepth(1000);
 
-    // Dark background
+    // Dark background (more opaque)
     const bg = this.add.rectangle(
       width / 2,
       height / 2,
       width,
       height,
       0x000000,
-      0.85
+      0.95
     );
     bg.setInteractive(); // Block clicks behind
 
@@ -853,7 +820,7 @@ export class GameScene extends Phaser.Scene {
       this.powerupsOverlay.add(card);
     });
 
-    // Buy button
+    // Buy button (neon green style)
     const btnWidth = 280;
     const btnHeight = 70;
     const buyBtnY = height * 0.78;
@@ -871,7 +838,7 @@ export class GameScene extends Phaser.Scene {
     );
 
     const buyBtnBg = this.add.graphics();
-    buyBtnBg.fillStyle(0xffd700, 1);
+    buyBtnBg.fillStyle(0xb7ff00, 1);
     buyBtnBg.fillRoundedRect(
       -btnWidth / 2,
       -btnHeight / 2,
@@ -914,40 +881,23 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Back button
-    const backBtn = this.add.container(width / 2, height * 0.9);
-
-    const backBtnShadow = this.add.graphics();
-    backBtnShadow.fillStyle(0x000000, 1);
-    backBtnShadow.fillRoundedRect(
-      -btnWidth / 2 + 6,
-      -btnHeight / 2 + 6,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
-    const backBtnBg = this.add.graphics();
-    backBtnBg.fillStyle(0xb7ff00, 1);
-    backBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
+    // Back button (text only, no background)
     const backBtnText = this.add
-      .text(0, 0, "BACK", {
+      .text(width / 2, height * 0.88, "BACK", {
         fontFamily: "Pixelify Sans",
         fontSize: "36px",
-        color: "#000000",
+        color: "#B7FF00",
         fontStyle: "bold",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
 
-    backBtn.add([backBtnShadow, backBtnBg, backBtnText]);
-    backBtn.setInteractive({
+    backBtnText.on("pointerdown", () => {
+      this.playSound("sfx_button");
+      this.hidePowerupsOverlay();
+    });
+
+    this.powerupsOverlay.add([bg, title, subtitle, buyBtn, backBtnText]);
       hitArea: new Phaser.Geom.Rectangle(
         -btnWidth / 2,
         -btnHeight / 2,
@@ -972,54 +922,52 @@ export class GameScene extends Phaser.Scene {
     powerup: (typeof GameSettings.powerups)[0]
   ): Phaser.GameObjects.Container {
     const { width } = this.cameras.main;
-    const cardWidth = width - 80;
-    const cardHeight = 120;
+    const cardWidth = width - 60;
+    const cardHeight = 130;
 
     const container = this.add.container(x, y);
 
-    // Card background
+    // Card background (more visible)
     const cardBg = this.add.graphics();
-    cardBg.fillStyle(0x111111, 0.95);
+    cardBg.fillStyle(0x1a1a2e, 1);
     cardBg.fillRoundedRect(
       -cardWidth / 2,
       -cardHeight / 2,
       cardWidth,
       cardHeight,
-      20
+      16
     );
-    cardBg.lineStyle(4, 0xb7ff00);
+    cardBg.lineStyle(3, 0xb7ff00);
     cardBg.strokeRoundedRect(
       -cardWidth / 2,
       -cardHeight / 2,
       cardWidth,
       cardHeight,
-      20
+      16
     );
 
-    // Icon
+    // Icon (larger and more visible)
     const icon = this.add
-      .text(-cardWidth / 2 + 55, 0, powerup.icon, { fontSize: "48px" })
+      .text(-cardWidth / 2 + 50, 0, powerup.icon, { fontSize: "52px" })
       .setOrigin(0.5);
 
-    // Name
+    // Name (larger and more visible)
     const nameText = this.add
-      .text(-cardWidth / 2 + 110, -cardHeight / 5, powerup.name, {
+      .text(-cardWidth / 2 + 100, -cardHeight / 4, powerup.name, {
         fontFamily: "Pixelify Sans",
-        fontSize: "28px",
+        fontSize: "32px",
         color: "#B7FF00",
         fontStyle: "bold",
-        stroke: "#000000",
-        strokeThickness: 4,
       })
       .setOrigin(0, 0.5);
 
-    // Description
+    // Description (larger and brighter)
     const descText = this.add
-      .text(-cardWidth / 2 + 110, cardHeight / 6, powerup.description, {
+      .text(-cardWidth / 2 + 100, cardHeight / 6, powerup.description, {
         fontFamily: "Pixelify Sans",
-        fontSize: "18px",
+        fontSize: "20px",
         color: "#FFFFFF",
-        wordWrap: { width: cardWidth - 180 },
+        wordWrap: { width: cardWidth - 130 },
       })
       .setOrigin(0, 0.5);
 
