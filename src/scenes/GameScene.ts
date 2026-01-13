@@ -488,7 +488,7 @@ export class GameScene extends Phaser.Scene {
 
     // Position buttons below the limit line, in a row
     // Left: style, Right: power-ups
-    const btnSize = 28;
+    const btnSize = 34;
     const baseY = this.LIMIT_LINE_Y + 50;
     const centerX = width / 2;
     const spacing = 50;
