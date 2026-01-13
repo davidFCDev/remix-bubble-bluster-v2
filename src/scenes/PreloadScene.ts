@@ -136,7 +136,8 @@ export class PreloadScene extends Phaser.Scene {
       if (!this.cache.audio.exists("sfx_button")) {
         console.warn("sfx_button missing, but proceeding");
       }
-      this.scene.start("StartScene");
+      // Ir directo al selector de personaje, saltando la pantalla de inicio
+      this.scene.start("CharacterSelectScene");
     }
   }
 }

@@ -73,6 +73,7 @@ export class GameScene extends Phaser.Scene {
   private lastTouchX: number = 0; // Track last touch X position for relative aiming
   private recentColors: string[] = []; // Track recent bubble colors to prevent 3+ consecutive
   private bubbleStyle: string = "classic"; // Selected bubble visual style
+  private bubbleStyleIndex: number = 0; // Current bubble style index for cycling
 
   // Power-ups (one-time use per game)
   private hasExtraLife: boolean = false;
@@ -84,6 +85,12 @@ export class GameScene extends Phaser.Scene {
   private freezeUsed: boolean = false;
   private freezeActive: boolean = false;
   private levelStartScore: number = 0; // Score when level started (for extra life)
+
+  // In-game unlock buttons
+  private styleBtn!: Phaser.GameObjects.Container;
+  private powerupsBtn!: Phaser.GameObjects.Container;
+  private styleOverlay!: Phaser.GameObjects.Container;
+  private powerupsOverlay!: Phaser.GameObjects.Container;
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -221,6 +228,9 @@ export class GameScene extends Phaser.Scene {
 
     // Power-up Buttons (Left of Launcher)
     this.createPowerupButtons();
+
+    // In-game Unlock Buttons (Right side, above limit line)
+    this.createIngameUnlockButtons();
 
     // Input
     if (this.input.keyboard) {
@@ -461,6 +471,567 @@ export class GameScene extends Phaser.Scene {
   ) {
     btn.setAlpha(isAvailable ? 1 : 0.4);
     btn.disableInteractive();
+  }
+
+  createIngameUnlockButtons() {
+    const { width, height } = this.cameras.main;
+
+    // Check if player has exclusive balls unlocked
+    const hasExclusiveBalls =
+      (window.FarcadeSDK as any)?.purchasedItems?.includes("exclusive-balls") ??
+      false;
+
+    // Check if player has power-ups item
+    const hasPowerupsItem =
+      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ??
+      false;
+
+    // Position buttons below the limit line, in a row
+    // Left: power-ups, Right: style
+    const btnSize = 28;
+    const baseY = this.LIMIT_LINE_Y + 25;
+    const centerX = width / 2;
+    const spacing = 50;
+
+    // Style button (always shown) - RIGHT side
+    const styleBtnX = hasPowerupsItem ? centerX : centerX + spacing;
+    this.styleBtn = this.add.container(styleBtnX, baseY);
+
+    const styleBg = this.add
+      .circle(0, 0, btnSize, 0x000000)
+      .setStrokeStyle(3, 0x9932cc);
+    const styleInner = this.add.circle(0, 0, btnSize - 5, 0x9932cc, 0.3);
+    const styleIcon = this.add
+      .text(0, 0, "🎨", { fontSize: "22px" })
+      .setOrigin(0.5);
+
+    this.styleBtn.add([styleBg, styleInner, styleIcon]);
+    this.styleBtn.setSize(btnSize * 2, btnSize * 2);
+    this.styleBtn.setInteractive({ useHandCursor: true });
+
+    this.styleBtn.on(
+      "pointerdown",
+      (pointer: any, localX: any, localY: any, event: any) => {
+        event.stopPropagation();
+        this.skillButtonPressed = true;
+        this.playSound("sfx_button");
+
+        if (hasExclusiveBalls) {
+          // Already unlocked - cycle through styles
+          this.cycleNextBubbleStyle();
+        } else {
+          // Not unlocked - show overlay
+          this.showStyleOverlay();
+        }
+      }
+    );
+
+    // Power-ups button (only shown if NOT purchased) - LEFT side
+    if (!hasPowerupsItem) {
+      this.powerupsBtn = this.add.container(centerX - spacing, baseY);
+
+      const powerupsBg = this.add
+        .circle(0, 0, btnSize, 0x000000)
+        .setStrokeStyle(3, 0x01003d);
+      const powerupsInner = this.add.circle(0, 0, btnSize - 5, 0x01003d, 0.3);
+      const powerupsIcon = this.add
+        .text(0, 0, "⚡", { fontSize: "22px" })
+        .setOrigin(0.5);
+
+      this.powerupsBtn.add([powerupsBg, powerupsInner, powerupsIcon]);
+      this.powerupsBtn.setSize(btnSize * 2, btnSize * 2);
+      this.powerupsBtn.setInteractive({ useHandCursor: true });
+
+      this.powerupsBtn.on(
+        "pointerdown",
+        (pointer: any, localX: any, localY: any, event: any) => {
+          event.stopPropagation();
+          this.skillButtonPressed = true;
+          this.playSound("sfx_button");
+          this.showPowerupsOverlay();
+        }
+      );
+    }
+  }
+
+  cycleNextBubbleStyle() {
+    const styles = GameSettings.bubbleStyles.filter((s) => !s.locked);
+    if (styles.length === 0) return;
+
+    // Find current index and move to next
+    const currentIdx = styles.findIndex((s) => s.id === this.bubbleStyle);
+    this.bubbleStyleIndex = (currentIdx + 1) % styles.length;
+    this.bubbleStyle = styles[this.bubbleStyleIndex].id;
+
+    // Save to registry
+    this.registry.set("bubbleStyle", this.bubbleStyle);
+
+    // Show feedback text
+    const { width } = this.cameras.main;
+    const feedbackText = this.add
+      .text(
+        width / 2,
+        this.LIMIT_LINE_Y - 100,
+        `Style: ${styles[this.bubbleStyleIndex].name}`,
+        {
+          fontFamily: "Pixelify Sans",
+          fontSize: "28px",
+          color: "#B7FF00",
+          stroke: "#000000",
+          strokeThickness: 4,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(100);
+
+    this.tweens.add({
+      targets: feedbackText,
+      alpha: 0,
+      y: this.LIMIT_LINE_Y - 150,
+      duration: 1500,
+      onComplete: () => feedbackText.destroy(),
+    });
+
+    // Redraw all bubbles in grid with new style
+    this.redrawGridBubbles();
+
+    // Redraw current bubble if exists
+    if (this.currentBubble && this.currentBubble.sprite) {
+      this.currentBubble.sprite.destroy();
+      const { width, height } = this.cameras.main;
+      this.currentBubble.sprite = BubbleVisuals.createWithStyle(
+        this,
+        width / 2,
+        height - 120,
+        this.BUBBLE_SIZE,
+        this.currentBubble.color,
+        this.bubbleStyle
+      );
+    }
+  }
+
+  redrawGridBubbles() {
+    // Recreate all bubble sprites with new style
+    for (let row = 0; row < this.GRID_HEIGHT; row++) {
+      for (let col = 0; col < this.GRID_WIDTH; col++) {
+        const color = this.grid[row][col];
+        if (color && this.bubbleSprites[row][col]) {
+          const oldSprite = this.bubbleSprites[row][col];
+          if (oldSprite) {
+            const x = oldSprite.x;
+            const y = oldSprite.y;
+            oldSprite.destroy();
+
+            const newSprite = BubbleVisuals.createWithStyle(
+              this,
+              x,
+              y,
+              this.BUBBLE_SIZE,
+              color,
+              this.bubbleStyle
+            );
+            this.gameContainer.add(newSprite);
+            this.bubbleSprites[row][col] = newSprite as any;
+          }
+        }
+      }
+    }
+  }
+
+  showStyleOverlay() {
+    const { width, height } = this.cameras.main;
+
+    // Create overlay container
+    this.styleOverlay = this.add.container(0, 0).setDepth(1000);
+
+    // Dark background
+    const bg = this.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x000000,
+      0.85
+    );
+    bg.setInteractive(); // Block clicks behind
+
+    // Title
+    const title = this.add
+      .text(width / 2, height * 0.3, "EXCLUSIVE STYLES", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "52px",
+        color: "#B7FF00",
+        stroke: "#000000",
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5);
+
+    // Subtitle
+    const subtitle = this.add
+      .text(
+        width / 2,
+        height * 0.4,
+        "Unlock all bubble styles\nand customize your game!",
+        {
+          fontFamily: "Pixelify Sans",
+          fontSize: "28px",
+          color: "#FFFFFF",
+          align: "center",
+        }
+      )
+      .setOrigin(0.5);
+
+    // Buy button
+    const btnWidth = 280;
+    const btnHeight = 70;
+    const buyBtn = this.add.container(width / 2, height * 0.55);
+
+    const buyBtnShadow = this.add.graphics();
+    buyBtnShadow.fillStyle(0x000000, 1);
+    buyBtnShadow.fillRoundedRect(
+      -btnWidth / 2 + 6,
+      -btnHeight / 2 + 6,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const buyBtnBg = this.add.graphics();
+    buyBtnBg.fillStyle(0xffd700, 1);
+    buyBtnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const buyBtnText = this.add
+      .text(0, 0, "10 CREDITS", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "36px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    buyBtn.add([buyBtnShadow, buyBtnBg, buyBtnText]);
+    buyBtn.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    buyBtn.on("pointerdown", () => {
+      this.playSound("sfx_button");
+      if (window.FarcadeSDK) {
+        (window.FarcadeSDK as any).purchase({ item: "exclusive-balls" });
+        (window.FarcadeSDK as any).onPurchaseComplete(
+          (success: { success: boolean }) => {
+            if (success) {
+              this.hideStyleOverlay();
+              // Update button behavior
+              this.scene.restart();
+            }
+          }
+        );
+      }
+    });
+
+    // Back button
+    const backBtn = this.add.container(width / 2, height * 0.68);
+
+    const backBtnShadow = this.add.graphics();
+    backBtnShadow.fillStyle(0x000000, 1);
+    backBtnShadow.fillRoundedRect(
+      -btnWidth / 2 + 6,
+      -btnHeight / 2 + 6,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const backBtnBg = this.add.graphics();
+    backBtnBg.fillStyle(0xb7ff00, 1);
+    backBtnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const backBtnText = this.add
+      .text(0, 0, "BACK", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "36px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    backBtn.add([backBtnShadow, backBtnBg, backBtnText]);
+    backBtn.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    backBtn.on("pointerdown", () => {
+      this.playSound("sfx_button");
+      this.hideStyleOverlay();
+    });
+
+    this.styleOverlay.add([bg, title, subtitle, buyBtn, backBtn]);
+  }
+
+  hideStyleOverlay() {
+    if (this.styleOverlay) {
+      this.styleOverlay.destroy();
+    }
+  }
+
+  showPowerupsOverlay() {
+    const { width, height } = this.cameras.main;
+
+    // Create overlay container
+    this.powerupsOverlay = this.add.container(0, 0).setDepth(1000);
+
+    // Dark background
+    const bg = this.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x000000,
+      0.85
+    );
+    bg.setInteractive(); // Block clicks behind
+
+    // Title
+    const title = this.add
+      .text(width / 2, height * 0.1, "POWER-UPS", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "52px",
+        color: "#B7FF00",
+        stroke: "#000000",
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5);
+
+    // Subtitle
+    const subtitle = this.add
+      .text(width / 2, height * 0.17, "Unlock forever, use once per game!", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "24px",
+        color: "#FFFFFF",
+      })
+      .setOrigin(0.5);
+
+    // Create power-up cards
+    const powerups = GameSettings.powerups;
+    const cardHeight = 130;
+    const startY = height * 0.3;
+    const spacing = cardHeight + 20;
+
+    powerups.forEach((powerup, index) => {
+      const card = this.createPowerupCardOverlay(
+        width / 2,
+        startY + index * spacing,
+        powerup
+      );
+      this.powerupsOverlay.add(card);
+    });
+
+    // Buy button
+    const btnWidth = 280;
+    const btnHeight = 70;
+    const buyBtnY = height * 0.78;
+
+    const buyBtn = this.add.container(width / 2, buyBtnY);
+
+    const buyBtnShadow = this.add.graphics();
+    buyBtnShadow.fillStyle(0x000000, 1);
+    buyBtnShadow.fillRoundedRect(
+      -btnWidth / 2 + 6,
+      -btnHeight / 2 + 6,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const buyBtnBg = this.add.graphics();
+    buyBtnBg.fillStyle(0xffd700, 1);
+    buyBtnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const buyBtnText = this.add
+      .text(0, 0, "100 CREDITS", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "36px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    buyBtn.add([buyBtnShadow, buyBtnBg, buyBtnText]);
+    buyBtn.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    buyBtn.on("pointerdown", () => {
+      this.playSound("sfx_button");
+      if (window.FarcadeSDK) {
+        (window.FarcadeSDK as any).purchase?.("power-ups");
+        (window.FarcadeSDK as any).onPurchaseComplete?.((itemId: string) => {
+          if (itemId === "power-ups") {
+            this.hidePowerupsOverlay();
+            this.scene.restart();
+          }
+        });
+      }
+    });
+
+    // Back button
+    const backBtn = this.add.container(width / 2, height * 0.9);
+
+    const backBtnShadow = this.add.graphics();
+    backBtnShadow.fillStyle(0x000000, 1);
+    backBtnShadow.fillRoundedRect(
+      -btnWidth / 2 + 6,
+      -btnHeight / 2 + 6,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const backBtnBg = this.add.graphics();
+    backBtnBg.fillStyle(0xb7ff00, 1);
+    backBtnBg.fillRoundedRect(
+      -btnWidth / 2,
+      -btnHeight / 2,
+      btnWidth,
+      btnHeight,
+      12
+    );
+
+    const backBtnText = this.add
+      .text(0, 0, "BACK", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "36px",
+        color: "#000000",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    backBtn.add([backBtnShadow, backBtnBg, backBtnText]);
+    backBtn.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -btnWidth / 2,
+        -btnHeight / 2,
+        btnWidth,
+        btnHeight
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    backBtn.on("pointerdown", () => {
+      this.playSound("sfx_button");
+      this.hidePowerupsOverlay();
+    });
+
+    this.powerupsOverlay.add([bg, title, subtitle, buyBtn, backBtn]);
+  }
+
+  createPowerupCardOverlay(
+    x: number,
+    y: number,
+    powerup: (typeof GameSettings.powerups)[0]
+  ): Phaser.GameObjects.Container {
+    const { width } = this.cameras.main;
+    const cardWidth = width - 80;
+    const cardHeight = 120;
+
+    const container = this.add.container(x, y);
+
+    // Card background
+    const cardBg = this.add.graphics();
+    cardBg.fillStyle(0x111111, 0.95);
+    cardBg.fillRoundedRect(
+      -cardWidth / 2,
+      -cardHeight / 2,
+      cardWidth,
+      cardHeight,
+      20
+    );
+    cardBg.lineStyle(4, 0xb7ff00);
+    cardBg.strokeRoundedRect(
+      -cardWidth / 2,
+      -cardHeight / 2,
+      cardWidth,
+      cardHeight,
+      20
+    );
+
+    // Icon
+    const icon = this.add
+      .text(-cardWidth / 2 + 55, 0, powerup.icon, { fontSize: "48px" })
+      .setOrigin(0.5);
+
+    // Name
+    const nameText = this.add
+      .text(-cardWidth / 2 + 110, -cardHeight / 5, powerup.name, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "28px",
+        color: "#B7FF00",
+        fontStyle: "bold",
+        stroke: "#000000",
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0.5);
+
+    // Description
+    const descText = this.add
+      .text(-cardWidth / 2 + 110, cardHeight / 6, powerup.description, {
+        fontFamily: "Pixelify Sans",
+        fontSize: "18px",
+        color: "#FFFFFF",
+        wordWrap: { width: cardWidth - 180 },
+      })
+      .setOrigin(0, 0.5);
+
+    container.add([cardBg, icon, nameText, descText]);
+
+    return container;
+  }
+
+  hidePowerupsOverlay() {
+    if (this.powerupsOverlay) {
+      this.powerupsOverlay.destroy();
+    }
   }
 
   startGame() {

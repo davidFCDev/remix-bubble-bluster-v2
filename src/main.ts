@@ -48,10 +48,10 @@ const game = new Phaser.Game(config);
 // SDK: Handle play again requests globally
 if (window.FarcadeSDK) {
   window.FarcadeSDK.on("play_again", () => {
-    // Restart the game from the beginning
+    // Restart the game from the beginning - go directly to character select
     game.scene.stop("GameScene");
-    game.scene.stop("CharacterSelectScene");
-    game.scene.start("StartScene");
+    game.scene.stop("StartScene");
+    game.scene.start("CharacterSelectScene");
   });
 }
 
