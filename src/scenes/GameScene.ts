@@ -898,22 +898,6 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.powerupsOverlay.add([bg, title, subtitle, buyBtn, backBtnText]);
-      hitArea: new Phaser.Geom.Rectangle(
-        -btnWidth / 2,
-        -btnHeight / 2,
-        btnWidth,
-        btnHeight
-      ),
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
-
-    backBtn.on("pointerdown", () => {
-      this.playSound("sfx_button");
-      this.hidePowerupsOverlay();
-    });
-
-    this.powerupsOverlay.add([bg, title, subtitle, buyBtn, backBtn]);
   }
 
   createPowerupCardOverlay(
