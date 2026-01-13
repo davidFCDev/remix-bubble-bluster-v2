@@ -493,8 +493,8 @@ export class GameScene extends Phaser.Scene {
     const centerX = width / 2;
     const spacing = 50;
 
-    // Style button (always shown) - LEFT side (using SKILL button style)
-    const styleBtnX = hasPowerupsItem ? centerX : centerX - spacing;
+    // Style button (always shown) - LEFT side, always at same position
+    const styleBtnX = centerX - spacing;
     this.styleBtn = this.add.container(styleBtnX, baseY);
 
     const styleBg = this.add
@@ -597,12 +597,13 @@ export class GameScene extends Phaser.Scene {
 
     // Redraw current bubble if exists
     if (this.currentBubble && this.currentBubble.sprite) {
+      const bubbleX = this.currentBubble.x;
+      const bubbleY = this.currentBubble.y;
       this.currentBubble.sprite.destroy();
-      const { width, height } = this.cameras.main;
       this.currentBubble.sprite = BubbleVisuals.createWithStyle(
         this,
-        width / 2,
-        height - 120,
+        bubbleX,
+        bubbleY,
         this.BUBBLE_SIZE,
         this.currentBubble.color,
         this.bubbleStyle
@@ -640,6 +641,11 @@ export class GameScene extends Phaser.Scene {
 
   showStyleOverlay() {
     const { width, height } = this.cameras.main;
+
+    // Pause the game timer while overlay is open
+    if (this.timerEvent) {
+      this.timerEvent.paused = true;
+    }
 
     // Create overlay container
     this.styleOverlay = this.add.container(0, 0).setDepth(1000);
@@ -766,10 +772,19 @@ export class GameScene extends Phaser.Scene {
     if (this.styleOverlay) {
       this.styleOverlay.destroy();
     }
+    // Resume the game timer
+    if (this.timerEvent) {
+      this.timerEvent.paused = false;
+    }
   }
 
   showPowerupsOverlay() {
     const { width, height } = this.cameras.main;
+
+    // Pause the game timer while overlay is open
+    if (this.timerEvent) {
+      this.timerEvent.paused = true;
+    }
 
     // Create overlay container
     this.powerupsOverlay = this.add.container(0, 0).setDepth(1000);
@@ -967,6 +982,10 @@ export class GameScene extends Phaser.Scene {
   hidePowerupsOverlay() {
     if (this.powerupsOverlay) {
       this.powerupsOverlay.destroy();
+    }
+    // Resume the game timer
+    if (this.timerEvent) {
+      this.timerEvent.paused = false;
     }
   }
 
