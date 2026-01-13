@@ -489,7 +489,7 @@ export class GameScene extends Phaser.Scene {
     // Position buttons below the limit line, in a row
     // Left: style, Right: power-ups
     const btnSize = 28;
-    const baseY = this.LIMIT_LINE_Y + 25;
+    const baseY = this.LIMIT_LINE_Y + 50;
     const centerX = width / 2;
     const spacing = 50;
 
@@ -805,12 +805,16 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Create power-up cards
+    // Create power-up cards (add to overlay first so they appear behind buttons)
     const powerups = GameSettings.powerups;
     const cardHeight = 130;
     const startY = height * 0.3;
     const spacing = cardHeight + 20;
 
+    // First add bg, title, subtitle to overlay
+    this.powerupsOverlay.add([bg, title, subtitle]);
+
+    // Then add cards
     powerups.forEach((powerup, index) => {
       const card = this.createPowerupCardOverlay(
         width / 2,
@@ -897,7 +901,7 @@ export class GameScene extends Phaser.Scene {
       this.hidePowerupsOverlay();
     });
 
-    this.powerupsOverlay.add([bg, title, subtitle, buyBtn, backBtnText]);
+    this.powerupsOverlay.add([buyBtn, backBtnText]);
   }
 
   createPowerupCardOverlay(
