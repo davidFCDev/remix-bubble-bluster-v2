@@ -1,4 +1,3 @@
-import { initRemix } from "@insidethesim/remix-dev";
 import GameSettings from "./config/GameSettings";
 import { BubbleStyleScene } from "./scenes/BubbleStyleScene";
 import { CharacterSelectScene } from "./scenes/CharacterSelectScene";
@@ -6,19 +5,39 @@ import { GameScene } from "./scenes/GameScene";
 import { PowerupsScene } from "./scenes/PowerupsScene";
 import { PreloadScene } from "./scenes/PreloadScene";
 import { StartScene } from "./scenes/StartScene";
+import { getCurrentAspectRatioInfo } from "./utils/AspectRatio";
 
-// SDK mock is automatically initialized by the framework (dev-init.ts)
+// --- Dynamic height: keep width=720, adjust height to fill viewport ---
+const GAME_WIDTH = GameSettings.canvas.width; // 720
+
+// Use visualViewport for accurate mobile dimensions (excludes browser chrome)
+function getViewportSize() {
+  const vv = window.visualViewport;
+  return {
+    width: vv ? vv.width : window.innerWidth,
+    height: vv ? vv.height : window.innerHeight,
+  };
+}
+
+const viewport = getViewportSize();
+const viewportRatio = viewport.width / viewport.height;
+// On tall screens -> taller canvas; on wide screens -> clamp to base 1080
+const GAME_HEIGHT = Math.max(
+  GameSettings.canvas.height, // never shorter than 1080
+  Math.round(GAME_WIDTH / viewportRatio),
+);
 
 // Game configuration
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
-  width: GameSettings.canvas.width,
-  height: GameSettings.canvas.height,
+  width: GAME_WIDTH,
+  height: GAME_HEIGHT,
   scale: {
     mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
     parent: document.body,
-    width: GameSettings.canvas.width,
-    height: GameSettings.canvas.height,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
   },
   backgroundColor: "#1a1a1a",
   scene: [
@@ -45,19 +64,32 @@ const game = new Phaser.Game(config);
 // Store globally for performance monitoring and HMR cleanup
 (window as any).game = game;
 
-// SDK: Handle play again requests globally
-if (window.FarcadeSDK) {
-  window.FarcadeSDK.on("play_again", () => {
-    // Restart the game from the beginning - go directly to character select
-    game.scene.stop("GameScene");
-    game.scene.stop("StartScene");
-    game.scene.start("CharacterSelectScene");
-  });
+// --- Aspect Ratio detection (see ASPECT-RATIO-GUIDE.md) ---
+function updateAspectRatioInfo() {
+  const info = getCurrentAspectRatioInfo(GAME_HEIGHT);
+  game.registry.set("aspectRatio", info.ratio);
+  game.registry.set("isTallScreen", info.isTall);
+  game.registry.set("topOffset", info.topOffset);
 }
 
-// Initialize Remix framework after game is created
+// Run on init + every resize
+updateAspectRatioInfo();
+window.addEventListener("resize", updateAspectRatioInfo);
+
+// Initialize Remix SDK after game is created
 game.events.once("ready", () => {
-  initRemix(game, {
-    multiplayer: false,
-  });
+  // RemixSDK: listen for play_again to restart the game
+  if (window.RemixSDK) {
+    window.RemixSDK.onPlayAgain(() => {
+      const activeScene = game.scene.getScenes(true)[0];
+      if (activeScene) {
+        activeScene.scene.start("CharacterSelectScene");
+      }
+    });
+
+    // RemixSDK: handle mute toggle from platform
+    window.RemixSDK.onToggleMute((data) => {
+      game.sound.mute = data.isMuted;
+    });
+  }
 });

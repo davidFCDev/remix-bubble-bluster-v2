@@ -5,24 +5,26 @@
 // Phaser is loaded globally via CDN
 declare const Phaser: typeof import("phaser");
 
-// Import the actual SDK types from the package
-import type { FarcadeSDK as FarcadeSDKType } from "@farcade/game-sdk";
-
-// Extend SDK type with properties that may not be in the type definitions
-interface ExtendedFarcadeSDK extends FarcadeSDKType {
-  purchasedItems?: string[];
-  hasItem?(item: string): boolean;
-  purchase?(options: { item: string }): Promise<{ success: boolean }>;
-  onPurchaseComplete?(callback: (data: { success: boolean }) => void): void;
+/**
+ * RemixSDK is loaded via CDN (@remix-gg/sdk).
+ * We declare the subset of the API that the game uses.
+ */
+interface RemixSDKInstance {
+  singlePlayer: {
+    actions: {
+      gameOver: (data: { score: number }) => void;
+    };
+  };
+  hapticFeedback: () => void;
+  onPlayAgain: (callback: () => void) => void;
+  onToggleMute: (callback: (data: { isMuted: boolean }) => void) => void;
+  hasItem: (itemName: string) => Promise<boolean>;
+  purchaseItem: (itemName: string) => Promise<{ success: boolean }>;
 }
 
-// Farcade SDK is loaded globally via CDN
-declare const FarcadeSDK: ExtendedFarcadeSDK;
-
-// Extend window for global SDK access
 declare global {
   interface Window {
-    FarcadeSDK?: ExtendedFarcadeSDK;
+    RemixSDK?: RemixSDKInstance;
   }
 }
 

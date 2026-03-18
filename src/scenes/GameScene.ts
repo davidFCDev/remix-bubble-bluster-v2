@@ -88,9 +88,8 @@ export class GameScene extends Phaser.Scene {
 
   // In-game unlock buttons
   private styleBtn!: Phaser.GameObjects.Container;
-  private powerupsBtn!: Phaser.GameObjects.Container;
-  private styleOverlay!: Phaser.GameObjects.Container;
-  private powerupsOverlay!: Phaser.GameObjects.Container;
+  private hasBallStyles: boolean = false;
+  private hasExtraLifeItem: boolean = false; // Owned via RemixSDK "extra-life"
 
   // Constants
   private BUBBLE_SIZE!: number;
@@ -122,25 +121,46 @@ export class GameScene extends Phaser.Scene {
     this.levelTime = GameSettings.gameplay.levelTime;
     this.recentColors = []; // Reset recent colors tracking
 
-    // Initialize power-ups - only available if player purchased "power-ups" item
-    const hasPowerupsItem =
-      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ??
-      false;
-    this.hasExtraLife = hasPowerupsItem;
+    // Initialize power-ups
+    this.hasExtraLife = false;
     this.extraLifeUsed = false;
-    this.hasStopClock = hasPowerupsItem;
+    this.hasStopClock = true;
     this.stopClockUsed = false;
     this.stopClockActive = false;
-    this.hasFreeze = hasPowerupsItem;
+    this.hasFreeze = true;
     this.freezeUsed = false;
     this.freezeActive = false;
     this.levelStartScore = 0;
   }
 
-  create() {
+  async create() {
     const { width, height } = this.cameras.main;
     this.BUBBLE_SIZE = width / this.GRID_WIDTH;
-    this.LIMIT_LINE_Y = height - 200;
+
+    // Check owned items via RemixSDK
+    if (window.RemixSDK) {
+      try {
+        this.hasBallStyles = await window.RemixSDK.hasItem("ball-styles");
+      } catch {
+        this.hasBallStyles = false;
+      }
+      try {
+        this.hasExtraLifeItem = await window.RemixSDK.hasItem("extra-life");
+      } catch {
+        this.hasExtraLifeItem = false;
+      }
+      // Grant extra life if player owns the item
+      if (this.hasExtraLifeItem) {
+        this.hasExtraLife = true;
+        this.extraLifeUsed = false;
+      }
+    }
+
+    // Aspect-ratio offset for tall screens (see ASPECT-RATIO-GUIDE.md)
+    const topOffset: number = this.registry.get("topOffset") || 0;
+    const headerExtraDown = topOffset > 0 ? topOffset * 2 : 0;
+    this.GRID_OFFSET_Y = 80 + headerExtraDown;
+    this.LIMIT_LINE_Y = height - 200 - headerExtraDown;
 
     // Load saved game state (tutorials seen)
     this.loadGameState();
@@ -183,15 +203,31 @@ export class GameScene extends Phaser.Scene {
     // Ensure crisp pixel art look
     if (this.characterSprite.texture) {
       this.characterSprite.texture.setFilter(
-        Phaser.Textures.FilterMode.NEAREST
+        Phaser.Textures.FilterMode.NEAREST,
       );
     }
 
     // UI Header (Retro Style - Single Row)
-    // Dark gray background
-    this.add.rectangle(width / 2, 40, width, 80, 0x111111, 1).setOrigin(0.5);
+    // On tall screens, push header further down and fill area above with same color
+    if (headerExtraDown > 0) {
+      // Fill the area above the header bar with the same dark color
+      this.add
+        .rectangle(
+          width / 2,
+          headerExtraDown / 2,
+          width,
+          headerExtraDown,
+          0x111111,
+          1,
+        )
+        .setOrigin(0.5);
+    }
+    // Dark gray background (shifted down on tall screens)
+    this.add
+      .rectangle(width / 2, 40 + headerExtraDown, width, 80, 0x111111, 1)
+      .setOrigin(0.5);
 
-    const headerY = 40;
+    const headerY = 40 + headerExtraDown;
     const fontStyle = {
       fontFamily: "Pixelify Sans",
       fontSize: "32px", // Increased from 24px
@@ -201,7 +237,7 @@ export class GameScene extends Phaser.Scene {
     };
 
     this.scoreText = this.add
-      .text(width * 0.25, headerY, "0", fontStyle)
+      .text(width * 0.3, headerY, "0", fontStyle)
       .setOrigin(0.5);
 
     this.levelText = this.add
@@ -209,7 +245,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.timerText = this.add
-      .text(width * 0.75, headerY, "0", fontStyle)
+      .text(width * 0.7, headerY, "0", fontStyle)
       .setOrigin(0.5);
 
     // Next Bubbles UI (Bottom Right)
@@ -247,13 +283,13 @@ export class GameScene extends Phaser.Scene {
 
       // Power-up hotkeys
       this.input.keyboard.on("keydown-ONE", () =>
-        this.activatePowerup("extraLife")
+        this.activatePowerup("extraLife"),
       );
       this.input.keyboard.on("keydown-TWO", () =>
-        this.activatePowerup("stopClock")
+        this.activatePowerup("stopClock"),
       );
       this.input.keyboard.on("keydown-THREE", () =>
-        this.activatePowerup("freeze")
+        this.activatePowerup("freeze"),
       );
     }
 
@@ -288,7 +324,7 @@ export class GameScene extends Phaser.Scene {
         this.launcherAngle = Phaser.Math.Clamp(
           this.launcherAngle,
           0.2,
-          Math.PI - 0.2
+          Math.PI - 0.2,
         );
       }
     });
@@ -364,7 +400,7 @@ export class GameScene extends Phaser.Scene {
         this.skillButtonPressed = true; // Mark that skill button was pressed
         this.playSound("sfx_button");
         this.activateAbility();
-      }
+      },
     );
 
     this.skillBtn = btn;
@@ -372,16 +408,6 @@ export class GameScene extends Phaser.Scene {
 
   createPowerupButtons() {
     const { width, height } = this.cameras.main;
-
-    // Check if player has purchased power-ups item
-    const hasPowerupsItem =
-      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ??
-      false;
-
-    // Don't show power-up buttons if player hasn't purchased the item
-    if (!hasPowerupsItem) {
-      return;
-    }
 
     // Position power-up buttons above SKILL button forming inverted triangle
     // SKILL is at (width/2 + 160, height - 60)
@@ -401,7 +427,7 @@ export class GameScene extends Phaser.Scene {
       powerupY,
       "⏱️",
       "stopClock",
-      stopClockAvailable
+      stopClockAvailable,
     );
 
     // Freeze Button (top right)
@@ -410,7 +436,7 @@ export class GameScene extends Phaser.Scene {
       powerupY,
       "❄️",
       "freeze",
-      freezeAvailable
+      freezeAvailable,
     );
   }
 
@@ -419,7 +445,7 @@ export class GameScene extends Phaser.Scene {
     y: number,
     icon: string,
     powerupId: string,
-    isAvailable: boolean
+    isAvailable: boolean,
   ): Phaser.GameObjects.Container {
     const btn = this.add.container(x, y);
 
@@ -432,7 +458,7 @@ export class GameScene extends Phaser.Scene {
       0,
       34,
       isAvailable ? 0xb7ff00 : 0x222222,
-      0.2
+      0.2,
     );
 
     // Icon - larger font
@@ -456,7 +482,7 @@ export class GameScene extends Phaser.Scene {
           this.activatePowerup(powerupId);
           // Update button appearance after use
           this.updatePowerupButtonState(btn, false);
-        }
+        },
       );
     } else {
       btn.setAlpha(0.4);
@@ -467,35 +493,25 @@ export class GameScene extends Phaser.Scene {
 
   updatePowerupButtonState(
     btn: Phaser.GameObjects.Container,
-    isAvailable: boolean
+    isAvailable: boolean,
   ) {
     btn.setAlpha(isAvailable ? 1 : 0.4);
     btn.disableInteractive();
   }
 
   createIngameUnlockButtons() {
+    // Only show style button if user owns the ball-styles item
+    if (!this.hasBallStyles) return;
+
     const { width, height } = this.cameras.main;
 
-    // Check if player has exclusive balls unlocked
-    const hasExclusiveBalls =
-      (window.FarcadeSDK as any)?.purchasedItems?.includes("exclusive-balls") ??
-      false;
-
-    // Check if player has power-ups item
-    const hasPowerupsItem =
-      (window.FarcadeSDK as any)?.purchasedItems?.includes("power-ups") ??
-      false;
-
-    // Position buttons below the limit line, in a row
-    // Left: style, Right: power-ups
+    // Position style button at left edge, above the limit line
     const btnSize = 34;
-    const baseY = this.LIMIT_LINE_Y + 50;
-    const centerX = width / 2;
-    const spacing = 50;
+    const baseY = this.LIMIT_LINE_Y - 50;
+    const leftX = btnSize + 20; // Near left edge with small margin
 
-    // Style button (always shown) - LEFT side, always at same position
-    const styleBtnX = centerX - spacing;
-    this.styleBtn = this.add.container(styleBtnX, baseY);
+    // Style button - always unlocked, cycles through styles
+    this.styleBtn = this.add.container(leftX, baseY);
 
     const styleBg = this.add
       .circle(0, 0, btnSize, 0x000000)
@@ -515,43 +531,9 @@ export class GameScene extends Phaser.Scene {
         event.stopPropagation();
         this.skillButtonPressed = true;
         this.playSound("sfx_button");
-
-        if (hasExclusiveBalls) {
-          // Already unlocked - cycle through styles
-          this.cycleNextBubbleStyle();
-        } else {
-          // Not unlocked - show overlay
-          this.showStyleOverlay();
-        }
-      }
+        this.cycleNextBubbleStyle();
+      },
     );
-
-    // Power-ups button (only shown if NOT purchased) - RIGHT side (using SKILL button style)
-    if (!hasPowerupsItem) {
-      this.powerupsBtn = this.add.container(centerX + spacing, baseY);
-
-      const powerupsBg = this.add
-        .circle(0, 0, btnSize, 0x000000)
-        .setStrokeStyle(3, 0xb7ff00);
-      const powerupsInner = this.add.circle(0, 0, btnSize - 5, 0xb7ff00, 0.2);
-      const powerupsIcon = this.add
-        .text(0, 0, "⚡", { fontSize: "22px" })
-        .setOrigin(0.5);
-
-      this.powerupsBtn.add([powerupsBg, powerupsInner, powerupsIcon]);
-      this.powerupsBtn.setSize(btnSize * 2, btnSize * 2);
-      this.powerupsBtn.setInteractive({ useHandCursor: true });
-
-      this.powerupsBtn.on(
-        "pointerdown",
-        (pointer: any, localX: any, localY: any, event: any) => {
-          event.stopPropagation();
-          this.skillButtonPressed = true;
-          this.playSound("sfx_button");
-          this.showPowerupsOverlay();
-        }
-      );
-    }
   }
 
   cycleNextBubbleStyle() {
@@ -579,7 +561,7 @@ export class GameScene extends Phaser.Scene {
           color: "#B7FF00",
           stroke: "#000000",
           strokeThickness: 4,
-        }
+        },
       )
       .setOrigin(0.5)
       .setDepth(100);
@@ -606,7 +588,7 @@ export class GameScene extends Phaser.Scene {
         bubbleY,
         this.BUBBLE_SIZE,
         this.currentBubble.color,
-        this.bubbleStyle
+        this.bubbleStyle,
       );
     }
   }
@@ -629,363 +611,13 @@ export class GameScene extends Phaser.Scene {
               y,
               this.BUBBLE_SIZE,
               color,
-              this.bubbleStyle
+              this.bubbleStyle,
             );
             this.gameContainer.add(newSprite);
             this.bubbleSprites[row][col] = newSprite as any;
           }
         }
       }
-    }
-  }
-
-  showStyleOverlay() {
-    const { width, height } = this.cameras.main;
-
-    // Pause the game timer while overlay is open
-    if (this.timerEvent) {
-      this.timerEvent.paused = true;
-    }
-
-    // Create overlay container
-    this.styleOverlay = this.add.container(0, 0).setDepth(1000);
-
-    // Dark background (more opaque)
-    const bg = this.add.rectangle(
-      width / 2,
-      height / 2,
-      width,
-      height,
-      0x000000,
-      0.95
-    );
-    bg.setInteractive(); // Block clicks behind
-
-    // Title
-    const title = this.add
-      .text(width / 2, height * 0.3, "EXCLUSIVE STYLES", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "52px",
-        color: "#B7FF00",
-        stroke: "#000000",
-        strokeThickness: 8,
-      })
-      .setOrigin(0.5);
-
-    // Subtitle
-    const subtitle = this.add
-      .text(
-        width / 2,
-        height * 0.4,
-        "Unlock all bubble styles\nand customize your game!",
-        {
-          fontFamily: "Pixelify Sans",
-          fontSize: "28px",
-          color: "#FFFFFF",
-          align: "center",
-        }
-      )
-      .setOrigin(0.5);
-
-    // Buy button (neon green style)
-    const btnWidth = 280;
-    const btnHeight = 70;
-    const buyBtn = this.add.container(width / 2, height * 0.55);
-
-    const buyBtnShadow = this.add.graphics();
-    buyBtnShadow.fillStyle(0x000000, 1);
-    buyBtnShadow.fillRoundedRect(
-      -btnWidth / 2 + 6,
-      -btnHeight / 2 + 6,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
-    const buyBtnBg = this.add.graphics();
-    buyBtnBg.fillStyle(0xb7ff00, 1);
-    buyBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
-    const buyBtnText = this.add
-      .text(0, 0, "10 CREDITS", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#000000",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    buyBtn.add([buyBtnShadow, buyBtnBg, buyBtnText]);
-    buyBtn.setInteractive({
-      hitArea: new Phaser.Geom.Rectangle(
-        -btnWidth / 2,
-        -btnHeight / 2,
-        btnWidth,
-        btnHeight
-      ),
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
-
-    buyBtn.on("pointerdown", () => {
-      this.playSound("sfx_button");
-      if (window.FarcadeSDK) {
-        (window.FarcadeSDK as any).purchase({ item: "exclusive-balls" });
-        (window.FarcadeSDK as any).onPurchaseComplete(
-          (success: { success: boolean }) => {
-            if (success) {
-              this.hideStyleOverlay();
-              // Update button behavior
-              this.scene.restart();
-            }
-          }
-        );
-      }
-    });
-
-    // Back button (text only, no background)
-    const backBtnText = this.add
-      .text(width / 2, height * 0.68, "BACK", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#B7FF00",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    backBtnText.on("pointerdown", () => {
-      this.playSound("sfx_button");
-      this.hideStyleOverlay();
-    });
-
-    this.styleOverlay.add([bg, title, subtitle, buyBtn, backBtnText]);
-  }
-
-  hideStyleOverlay() {
-    if (this.styleOverlay) {
-      this.styleOverlay.destroy();
-    }
-    // Resume the game timer
-    if (this.timerEvent) {
-      this.timerEvent.paused = false;
-    }
-  }
-
-  showPowerupsOverlay() {
-    const { width, height } = this.cameras.main;
-
-    // Pause the game timer while overlay is open
-    if (this.timerEvent) {
-      this.timerEvent.paused = true;
-    }
-
-    // Create overlay container
-    this.powerupsOverlay = this.add.container(0, 0).setDepth(1000);
-
-    // Dark background (more opaque)
-    const bg = this.add.rectangle(
-      width / 2,
-      height / 2,
-      width,
-      height,
-      0x000000,
-      0.95
-    );
-    bg.setInteractive(); // Block clicks behind
-
-    // Title
-    const title = this.add
-      .text(width / 2, height * 0.1, "POWER-UPS", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "52px",
-        color: "#B7FF00",
-        stroke: "#000000",
-        strokeThickness: 8,
-      })
-      .setOrigin(0.5);
-
-    // Subtitle
-    const subtitle = this.add
-      .text(width / 2, height * 0.17, "Unlock forever, use once per game!", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "24px",
-        color: "#FFFFFF",
-      })
-      .setOrigin(0.5);
-
-    // Create power-up cards (add to overlay first so they appear behind buttons)
-    const powerups = GameSettings.powerups;
-    const cardHeight = 130;
-    const startY = height * 0.3;
-    const spacing = cardHeight + 20;
-
-    // First add bg, title, subtitle to overlay
-    this.powerupsOverlay.add([bg, title, subtitle]);
-
-    // Then add cards
-    powerups.forEach((powerup, index) => {
-      const card = this.createPowerupCardOverlay(
-        width / 2,
-        startY + index * spacing,
-        powerup
-      );
-      this.powerupsOverlay.add(card);
-    });
-
-    // Buy button (neon green style)
-    const btnWidth = 280;
-    const btnHeight = 70;
-    const buyBtnY = height * 0.78;
-
-    const buyBtn = this.add.container(width / 2, buyBtnY);
-
-    const buyBtnShadow = this.add.graphics();
-    buyBtnShadow.fillStyle(0x000000, 1);
-    buyBtnShadow.fillRoundedRect(
-      -btnWidth / 2 + 6,
-      -btnHeight / 2 + 6,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
-    const buyBtnBg = this.add.graphics();
-    buyBtnBg.fillStyle(0xb7ff00, 1);
-    buyBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      12
-    );
-
-    const buyBtnText = this.add
-      .text(0, 0, "100 CREDITS", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#000000",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    buyBtn.add([buyBtnShadow, buyBtnBg, buyBtnText]);
-    buyBtn.setInteractive({
-      hitArea: new Phaser.Geom.Rectangle(
-        -btnWidth / 2,
-        -btnHeight / 2,
-        btnWidth,
-        btnHeight
-      ),
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
-
-    buyBtn.on("pointerdown", () => {
-      this.playSound("sfx_button");
-      if (window.FarcadeSDK) {
-        (window.FarcadeSDK as any).purchase?.("power-ups");
-        (window.FarcadeSDK as any).onPurchaseComplete?.((itemId: string) => {
-          if (itemId === "power-ups") {
-            this.hidePowerupsOverlay();
-            this.scene.restart();
-          }
-        });
-      }
-    });
-
-    // Back button (text only, no background)
-    const backBtnText = this.add
-      .text(width / 2, height * 0.88, "BACK", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#B7FF00",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    backBtnText.on("pointerdown", () => {
-      this.playSound("sfx_button");
-      this.hidePowerupsOverlay();
-    });
-
-    this.powerupsOverlay.add([buyBtn, backBtnText]);
-  }
-
-  createPowerupCardOverlay(
-    x: number,
-    y: number,
-    powerup: (typeof GameSettings.powerups)[0]
-  ): Phaser.GameObjects.Container {
-    const { width } = this.cameras.main;
-    const cardWidth = width - 60;
-    const cardHeight = 130;
-
-    const container = this.add.container(x, y);
-
-    // Card background (more visible)
-    const cardBg = this.add.graphics();
-    cardBg.fillStyle(0x1a1a2e, 1);
-    cardBg.fillRoundedRect(
-      -cardWidth / 2,
-      -cardHeight / 2,
-      cardWidth,
-      cardHeight,
-      16
-    );
-    cardBg.lineStyle(3, 0xb7ff00);
-    cardBg.strokeRoundedRect(
-      -cardWidth / 2,
-      -cardHeight / 2,
-      cardWidth,
-      cardHeight,
-      16
-    );
-
-    // Icon (larger and more visible)
-    const icon = this.add
-      .text(-cardWidth / 2 + 50, 0, powerup.icon, { fontSize: "52px" })
-      .setOrigin(0.5);
-
-    // Name (larger and more visible)
-    const nameText = this.add
-      .text(-cardWidth / 2 + 100, -cardHeight / 4, powerup.name, {
-        fontFamily: "Pixelify Sans",
-        fontSize: "32px",
-        color: "#B7FF00",
-        fontStyle: "bold",
-      })
-      .setOrigin(0, 0.5);
-
-    // Description (larger and brighter)
-    const descText = this.add
-      .text(-cardWidth / 2 + 100, cardHeight / 6, powerup.description, {
-        fontFamily: "Pixelify Sans",
-        fontSize: "20px",
-        color: "#FFFFFF",
-        wordWrap: { width: cardWidth - 130 },
-      })
-      .setOrigin(0, 0.5);
-
-    container.add([cardBg, icon, nameText, descText]);
-
-    return container;
-  }
-
-  hidePowerupsOverlay() {
-    if (this.powerupsOverlay) {
-      this.powerupsOverlay.destroy();
-    }
-    // Resume the game timer
-    if (this.timerEvent) {
-      this.timerEvent.paused = false;
     }
   }
 
@@ -1166,7 +798,7 @@ export class GameScene extends Phaser.Scene {
 
   // Get tutorial text for new bubble types introduced in each level
   getNewBubbleInfo(
-    level: number
+    level: number,
   ): { name: string; description: string } | null {
     switch (level) {
       case 1:
@@ -1220,7 +852,7 @@ export class GameScene extends Phaser.Scene {
       width,
       height,
       0x000000,
-      0.85
+      0.85,
     );
 
     const levelText = this.add
@@ -1336,7 +968,7 @@ export class GameScene extends Phaser.Scene {
       y,
       size,
       color,
-      this.bubbleStyle
+      this.bubbleStyle,
     );
   }
 
@@ -1440,7 +1072,7 @@ export class GameScene extends Phaser.Scene {
       width / 2,
       height - 20,
       this.BUBBLE_SIZE,
-      color
+      color,
     );
 
     this.currentBubble = {
@@ -1468,42 +1100,16 @@ export class GameScene extends Phaser.Scene {
     this.updateUI();
   }
 
-  // Load saved game state from SDK
+  // Load saved game state (in-memory only, no browser APIs)
   private loadGameState() {
-    if (window.FarcadeSDK) {
-      try {
-        // Try to get saved state from localStorage as fallback
-        // The SDK's loadGameState is async, so we use localStorage for immediate access
-        const saved = localStorage.getItem("bubbleBlusterState");
-        if (saved) {
-          const state = JSON.parse(saved);
-          if (state.seenTutorials && Array.isArray(state.seenTutorials)) {
-            GameScene.seenTutorials = new Set(state.seenTutorials);
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to load game state:", e);
-      }
-    }
+    // seenTutorials is already stored as a static Set on the class
+    // No need to persist across sessions
   }
 
-  // Save game state using SDK
+  // Save game state (in-memory only, no browser APIs)
   private saveGameState() {
-    if (window.FarcadeSDK) {
-      const gameState = {
-        seenTutorials: Array.from(GameScene.seenTutorials),
-      };
-
-      // Save to SDK
-      window.FarcadeSDK.singlePlayer.actions.saveGameState({ gameState });
-
-      // Also save to localStorage as backup
-      try {
-        localStorage.setItem("bubbleBlusterState", JSON.stringify(gameState));
-      } catch (e) {
-        console.warn("Failed to save to localStorage:", e);
-      }
-    }
+    // seenTutorials is already stored as a static Set on the class
+    // No need to persist across sessions
   }
 
   private playSound(key: string, config?: Phaser.Types.Sound.SoundConfig) {
@@ -1519,11 +1125,6 @@ export class GameScene extends Phaser.Scene {
 
     // Play shoot sound safely
     this.playSound("sfx_shoot");
-
-    // SDK: Haptic feedback on shoot
-    if (window.FarcadeSDK) {
-      window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
-    }
 
     this.canShoot = false;
 
@@ -1551,11 +1152,8 @@ export class GameScene extends Phaser.Scene {
 
     // Play generic skill sound with reduced volume
     this.playSound("sfx_skill", { volume: 0.4 });
-
-    // SDK: Haptic feedback on skill activation
-    if (window.FarcadeSDK) {
-      window.FarcadeSDK.singlePlayer.actions.hapticFeedback();
-    }
+    // Haptic feedback on skill activation
+    if (window.RemixSDK) window.RemixSDK.hapticFeedback();
 
     if (this.selectedCharacter.id === "Pinky") {
       this.currentBubble.color = "#FF6600";
@@ -1592,7 +1190,7 @@ export class GameScene extends Phaser.Scene {
         x,
         y,
         4,
-        Phaser.Utils.Array.GetRandom(colors)
+        Phaser.Utils.Array.GetRandom(colors),
       );
       const angle = (i / 8) * Math.PI * 2;
       const distance = 40 + Math.random() * 20;
@@ -1660,13 +1258,13 @@ export class GameScene extends Phaser.Scene {
     if (this.cursors.left.isDown || this.keys.A.isDown) {
       this.launcherSpeed = Math.min(
         this.launcherSpeed + acceleration,
-        maxSpeed
+        maxSpeed,
       );
       this.launcherAngle += Math.max(baseSpeed, this.launcherSpeed);
     } else if (this.cursors.right.isDown || this.keys.D.isDown) {
       this.launcherSpeed = Math.min(
         this.launcherSpeed + acceleration,
-        maxSpeed
+        maxSpeed,
       );
       this.launcherAngle -= Math.max(baseSpeed, this.launcherSpeed);
     } else {
@@ -1677,7 +1275,7 @@ export class GameScene extends Phaser.Scene {
     this.launcherAngle = Phaser.Math.Clamp(
       this.launcherAngle,
       0.2,
-      Math.PI - 0.2
+      Math.PI - 0.2,
     );
 
     // Update Arrow Graphics (Launcher Visuals)
@@ -1698,7 +1296,7 @@ export class GameScene extends Phaser.Scene {
     // Start from edge of bubble
     this.arrowGraphics.moveTo(
       startX + Math.cos(this.launcherAngle) * (this.BUBBLE_SIZE / 2),
-      startY - Math.sin(this.launcherAngle) * (this.BUBBLE_SIZE / 2)
+      startY - Math.sin(this.launcherAngle) * (this.BUBBLE_SIZE / 2),
     );
     this.arrowGraphics.lineTo(endX, endY);
     this.arrowGraphics.strokePath();
@@ -1804,7 +1402,7 @@ export class GameScene extends Phaser.Scene {
         bubble.x = Phaser.Math.Clamp(
           bubble.x,
           this.BUBBLE_SIZE / 2,
-          this.cameras.main.width - this.BUBBLE_SIZE / 2
+          this.cameras.main.width - this.BUBBLE_SIZE / 2,
         );
       }
 
@@ -1867,7 +1465,7 @@ export class GameScene extends Phaser.Scene {
             this.playPopAnimation(
               sprite.x + this.gameContainer.x,
               sprite.y + this.gameContainer.y,
-              color
+              color,
             );
             sprite.destroy();
             this.bubbleSprites[pos.row][pos.col] = null;
@@ -1897,7 +1495,7 @@ export class GameScene extends Phaser.Scene {
               bubble.x,
               bubble.y,
               bx,
-              worldBy
+              worldBy,
             );
             if (dist < this.BUBBLE_SIZE * 0.9) {
               if (bubble.isIceLance) {
@@ -1925,7 +1523,7 @@ export class GameScene extends Phaser.Scene {
                   this.playPopAnimation(
                     sprite.x + this.gameContainer.x,
                     sprite.y + this.gameContainer.y,
-                    color
+                    color,
                   );
                   sprite.destroy();
                   this.bubbleSprites[r][c] = null;
@@ -2014,7 +1612,7 @@ export class GameScene extends Phaser.Scene {
       // Convertir simY a coordenadas locales de la grilla para estimar fila
       const localSimY = simY - ceilingY;
       const approxRow = Math.floor(
-        localSimY / ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2)
+        localSimY / ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2),
       );
 
       const startRow = Math.max(0, approxRow - 2);
@@ -2055,7 +1653,7 @@ export class GameScene extends Phaser.Scene {
   getGridPos(x: number, y: number) {
     const row = Math.floor(
       (y - (this.ceilingOffset + this.GRID_OFFSET_Y)) /
-        ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2)
+        ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2),
     );
     const isOddRow = row % 2 === 1;
     const colOffset = isOddRow ? this.BUBBLE_SIZE / 2 : 0;
@@ -2064,7 +1662,7 @@ export class GameScene extends Phaser.Scene {
       row: Math.max(0, Math.min(this.GRID_HEIGHT - 1, row)),
       col: Math.max(
         0,
-        Math.min(isOddRow ? this.GRID_WIDTH - 2 : this.GRID_WIDTH - 1, col)
+        Math.min(isOddRow ? this.GRID_WIDTH - 2 : this.GRID_WIDTH - 1, col),
       ), // Fix max col
     };
   }
@@ -2127,7 +1725,7 @@ export class GameScene extends Phaser.Scene {
               this.playPopAnimation(
                 sprite.x + this.gameContainer.x,
                 sprite.y + this.gameContainer.y,
-                val
+                val,
               );
               sprite.destroy();
               this.bubbleSprites[n.r][n.c] = null;
@@ -2153,7 +1751,7 @@ export class GameScene extends Phaser.Scene {
                 this.playPopAnimation(
                   sprite.x + this.gameContainer.x,
                   sprite.y + this.gameContainer.y,
-                  val
+                  val,
                 );
                 sprite.destroy();
                 this.bubbleSprites[sn.r][sn.c] = null;
@@ -2168,7 +1766,7 @@ export class GameScene extends Phaser.Scene {
           this.playPopAnimation(
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
-            "#000000"
+            "#000000",
           );
           sprite.destroy();
           this.bubbleSprites[pos.row][pos.col] = null;
@@ -2194,7 +1792,7 @@ export class GameScene extends Phaser.Scene {
               bubble.x,
               bubble.y,
               nx,
-              worldNy
+              worldNy,
             );
 
             if (dist < minDistance) {
@@ -2225,7 +1823,7 @@ export class GameScene extends Phaser.Scene {
                     this.playPopAnimation(
                       sprite.x + this.gameContainer.x,
                       sprite.y + this.gameContainer.y,
-                      targetColor
+                      targetColor,
                     );
                     sprite.destroy();
                     this.bubbleSprites[r][c] = null;
@@ -2242,7 +1840,7 @@ export class GameScene extends Phaser.Scene {
           this.playPopAnimation(
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
-            "#FF6600"
+            "#FF6600",
           );
           sprite.destroy();
           this.bubbleSprites[pos.row][pos.col] = null;
@@ -2264,7 +1862,7 @@ export class GameScene extends Phaser.Scene {
               bubble.x,
               bubble.y,
               nx,
-              worldNy
+              worldNy,
             );
             if (dist < minDistance) {
               minDistance = dist;
@@ -2285,7 +1883,7 @@ export class GameScene extends Phaser.Scene {
           ) {
             const transformedPositions: { r: number; c: number }[] = [];
             const availableColors = GameSettings.colors.all.filter(
-              (c) => c !== targetColor
+              (c) => c !== targetColor,
             );
 
             // Transform all bubbles of target color
@@ -2310,7 +1908,7 @@ export class GameScene extends Phaser.Scene {
                     // Add sparkle effect before destroying
                     this.createHexParticles(
                       spriteX + this.gameContainer.x,
-                      spriteY + this.gameContainer.y
+                      spriteY + this.gameContainer.y,
                     );
                     oldSprite.destroy();
                     this.bubbleSprites[r][c] = null;
@@ -2340,7 +1938,7 @@ export class GameScene extends Phaser.Scene {
           this.playPopAnimation(
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
-            "#FFD700"
+            "#FFD700",
           );
           sprite.destroy();
           this.bubbleSprites[pos.row][pos.col] = null;
@@ -2364,7 +1962,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.ceilingFrozen) {
       const shotsPerDrop = Math.max(
         6,
-        GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1)
+        GameSettings.gameplay.baseShotsPerCeilingDrop - (this.level - 1),
       );
 
       if (this.shotCount >= shotsPerDrop) {
@@ -2427,7 +2025,7 @@ export class GameScene extends Phaser.Scene {
     const gridY = y - (this.ceilingOffset + this.GRID_OFFSET_Y);
 
     const centerRow = Math.floor(
-      gridY / ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2)
+      gridY / ((this.BUBBLE_SIZE * Math.sqrt(3)) / 2),
     );
 
     for (let r = centerRow - 1; r <= centerRow + 1; r++) {
@@ -2481,8 +2079,10 @@ export class GameScene extends Phaser.Scene {
     this.lastSpeechText = finalText;
 
     const { width, height } = this.cameras.main;
-    const x = 180; // Moved right (was 100)
-    const y = height - 300; // Moved up significantly (was height - 100)
+    const topOffset: number = this.registry.get("topOffset") || 0;
+    const isTall = topOffset > 0;
+    const x = isTall ? 120 : 180; // More left on tall screens
+    const y = isTall ? height - 250 : height - 300; // Lower on tall screens
 
     const container = this.add.container(x, y);
 
@@ -2549,7 +2149,7 @@ export class GameScene extends Phaser.Scene {
       this.playPopAnimation(
         bombSprite.x + this.gameContainer.x,
         bombSprite.y + this.gameContainer.y,
-        "#FF3300"
+        "#FF3300",
       );
     }
 
@@ -2582,7 +2182,7 @@ export class GameScene extends Phaser.Scene {
           this.playPopAnimation(
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
-            val
+            val,
           );
           sprite.destroy();
           this.bubbleSprites[n.r][n.c] = null;
@@ -2626,7 +2226,7 @@ export class GameScene extends Phaser.Scene {
           const container = this.bubbleSprites[row][col] as any;
           const circle = container.list[0] as Phaser.GameObjects.Arc;
           circle.setFillStyle(
-            Phaser.Display.Color.HexStringToColor(targetColor).color
+            Phaser.Display.Color.HexStringToColor(targetColor).color,
           );
         }
         // Now check matches for that color
@@ -2644,7 +2244,7 @@ export class GameScene extends Phaser.Scene {
           this.playPopAnimation(
             sprite.x + this.gameContainer.x,
             sprite.y + this.gameContainer.y,
-            this.grid[r][c] === "PRISM" ? "#FFFFFF" : color
+            this.grid[r][c] === "PRISM" ? "#FFFFFF" : color,
           );
           sprite.destroy();
           this.bubbleSprites[r][c] = null;
@@ -2795,7 +2395,7 @@ export class GameScene extends Phaser.Scene {
             this.playPopAnimation(
               sprite.x + this.gameContainer.x,
               sprite.y + this.gameContainer.y,
-              color
+              color,
             );
             sprite.destroy();
             this.bubbleSprites[r][c] = null;
@@ -2822,7 +2422,7 @@ export class GameScene extends Phaser.Scene {
               this.playPopAnimation(
                 sprite.x + this.gameContainer.x,
                 sprite.y + this.gameContainer.y,
-                "ANCHOR"
+                "ANCHOR",
               );
               sprite.destroy();
               this.bubbleSprites[r][c] = null;
@@ -2867,13 +2467,15 @@ export class GameScene extends Phaser.Scene {
             stroke: "#000000",
             strokeThickness: 4,
             align: "center",
-          }
+          },
         )
         .setOrigin(0.5)
         .setDepth(100);
 
       this.level++;
       this.playSound("sfx_level_complete", { volume: 0.4 });
+      // Haptic feedback on level complete
+      if (window.RemixSDK) window.RemixSDK.hapticFeedback();
       this.updateUI();
 
       this.time.delayedCall(1000, () => {
@@ -2897,13 +2499,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   checkGameOverWithDelay() {
-    // Check if any bubble crossed the line
+    // Check if any bubble touched or crossed the line
     for (let r = 0; r < this.GRID_HEIGHT; r++) {
       const maxCols = r % 2 === 1 ? this.GRID_WIDTH - 1 : this.GRID_WIDTH;
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
-          if (y + this.ceilingOffset + this.GRID_OFFSET_Y > this.LIMIT_LINE_Y) {
+          if (
+            y + this.ceilingOffset + this.GRID_OFFSET_Y >=
+            this.LIMIT_LINE_Y
+          ) {
             // Bubble crossed the line - wait a moment so player sees it, then game over
             this.time.delayedCall(500, () => {
               this.handleGameOver("GAME OVER");
@@ -2927,7 +2532,7 @@ export class GameScene extends Phaser.Scene {
       width,
       height,
       0x87ceeb,
-      0.5
+      0.5,
     );
     flash.setDepth(50);
     this.tweens.add({
@@ -3039,7 +2644,7 @@ export class GameScene extends Phaser.Scene {
         1,
         3,
         0xffffff,
-        0.7
+        0.7,
       );
       frostContainer.add(particle);
 
@@ -3073,10 +2678,10 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < maxCols; c++) {
         if (this.grid[r][c]) {
           const { y } = this.getBubblePos(r, c);
-          // Check if bubble crosses the limit line (with small margin for visual clarity)
+          // Game over when bubble touches the limit line
           if (
-            y + this.ceilingOffset + this.GRID_OFFSET_Y >
-            this.LIMIT_LINE_Y + this.BUBBLE_SIZE / 4
+            y + this.ceilingOffset + this.GRID_OFFSET_Y >=
+            this.LIMIT_LINE_Y
           ) {
             // Small delay so player sees the bubble cross the line
             this.time.delayedCall(300, () => {
@@ -3092,7 +2697,7 @@ export class GameScene extends Phaser.Scene {
   handleGameOver(message: string) {
     if (this.gameOver) return;
 
-    // Check if Extra Life is available
+    // If player has extra life available, use it instead of game over
     if (this.hasExtraLife && !this.extraLifeUsed) {
       this.useExtraLife();
       return;
@@ -3105,9 +2710,10 @@ export class GameScene extends Phaser.Scene {
     // Stop background music
     if (this.currentMusic) this.currentMusic.stop();
 
-    // SDK: Call gameOver with the final score
-    if (window.FarcadeSDK) {
-      window.FarcadeSDK.singlePlayer.actions.gameOver({ score: this.score });
+    // SDK: Send final score + haptic via RemixSDK
+    if (window.RemixSDK) {
+      window.RemixSDK.hapticFeedback();
+      window.RemixSDK.singlePlayer.actions.gameOver({ score: this.score });
     }
   }
 
@@ -3117,6 +2723,16 @@ export class GameScene extends Phaser.Scene {
   useExtraLife() {
     this.extraLifeUsed = true;
     this.hasExtraLife = false;
+
+    // Pause gameplay so player can't shoot during the animation
+    this.gameStarted = false;
+    this.canShoot = false;
+
+    // Remove current bubble so it doesn't stay visible
+    if (this.currentBubble && this.currentBubble.sprite) {
+      this.currentBubble.sprite.destroy();
+      this.currentBubble = null;
+    }
 
     // Show revival message
     const { width, height } = this.cameras.main;
@@ -3152,6 +2768,7 @@ export class GameScene extends Phaser.Scene {
     this.score = this.levelStartScore;
     this.gameOver = false;
     this.gameStarted = false;
+    this.canShoot = true;
 
     // Call startLevel which handles everything
     this.startLevel();
@@ -3210,7 +2827,7 @@ export class GameScene extends Phaser.Scene {
       width,
       height,
       0x87ceeb,
-      0.5
+      0.5,
     );
     flash.setDepth(50);
     this.tweens.add({
@@ -3293,7 +2910,7 @@ export class GameScene extends Phaser.Scene {
           x,
           y,
           35,
-          this.nextBubbles[idx]
+          this.nextBubbles[idx],
         );
       }
     });
@@ -3743,7 +3360,7 @@ export class GameScene extends Phaser.Scene {
         if (type === "STONE") {
           const neighbors = this.getNeighbors(r, c);
           const hasAdjacentStone = neighbors.some(
-            (n) => this.grid[n.r]?.[n.c] === "STONE"
+            (n) => this.grid[n.r]?.[n.c] === "STONE",
           );
           if (hasAdjacentStone) {
             attempts++;

@@ -3,8 +3,21 @@ export class StartScene extends Phaser.Scene {
     super("StartScene");
   }
 
-  create() {
+  async create() {
     const { width, height } = this.cameras.main;
+
+    // Fullscreen tall-screen offset (see ASPECT-RATIO-GUIDE.md)
+    const topOffset: number = this.registry.get("topOffset") || 0;
+
+    // Check if ball-styles item is owned
+    let hasBallStyles = false;
+    if (window.RemixSDK) {
+      try {
+        hasBallStyles = await window.RemixSDK.hasItem("ball-styles");
+      } catch {
+        hasBallStyles = false;
+      }
+    }
 
     // Background
     this.add
@@ -13,7 +26,7 @@ export class StartScene extends Phaser.Scene {
 
     // Title
     const titleText = this.add
-      .text(width / 2, height * 0.25, "BUBBLE\nBLUSTER", {
+      .text(width / 2, height * 0.25 + topOffset, "BUBBLE\nBLUSTER", {
         fontFamily: "Pixelify Sans",
         fontSize: "130px", // Larger
         color: "#B7FF00", // Neon Green
@@ -26,7 +39,7 @@ export class StartScene extends Phaser.Scene {
 
     // Subtitle "RELOADED"
     this.add
-      .text(width / 2, height * 0.25 + 150, "RELOADED", {
+      .text(width / 2, height * 0.25 + topOffset + 150, "RELOADED", {
         fontFamily: "Pixelify Sans",
         fontSize: "38px",
         color: "#FFFFFF",
@@ -52,7 +65,7 @@ export class StartScene extends Phaser.Scene {
       -btnHeight / 2 + 8, // Offset Y
       btnWidth,
       btnHeight,
-      15
+      15,
     );
 
     // Button Background (Rounded Graphics)
@@ -63,7 +76,7 @@ export class StartScene extends Phaser.Scene {
       -btnHeight / 2,
       btnWidth,
       btnHeight,
-      15
+      15,
     );
 
     const btnText = this.add
@@ -82,7 +95,7 @@ export class StartScene extends Phaser.Scene {
       -btnWidth / 2,
       -btnHeight / 2,
       btnWidth,
-      btnHeight
+      btnHeight,
     );
     startBtnContainer.setInteractive({
       hitArea: hitArea,
@@ -95,17 +108,11 @@ export class StartScene extends Phaser.Scene {
       this.scene.start("CharacterSelectScene");
     });
 
-    // Style Button (below Start) - Same size as Start button
+    // Style Button (below Start) - only shown if ball-styles item is owned
     const btnSpacing = 130; // Increased spacing between buttons
     const styleBtnY = btnY + btnSpacing;
 
-    // Check if player has exclusive balls unlocked
-    const hasExclusiveBalls =
-      (window.FarcadeSDK as any)?.purchasedItems?.includes("exclusive-balls") ??
-      false;
-
-    if (hasExclusiveBalls) {
-      // UNLOCKED: Show normal STYLE button
+    if (hasBallStyles) {
       const styleBtnContainer = this.add.container(width / 2, styleBtnY);
 
       const styleBtnShadow = this.add.graphics();
@@ -115,7 +122,7 @@ export class StartScene extends Phaser.Scene {
         -btnHeight / 2 + 8,
         btnWidth,
         btnHeight,
-        15
+        15,
       );
 
       const styleBtnBg = this.add.graphics();
@@ -125,7 +132,7 @@ export class StartScene extends Phaser.Scene {
         -btnHeight / 2,
         btnWidth,
         btnHeight,
-        15
+        15,
       );
 
       const styleBtnText = this.add
@@ -144,7 +151,7 @@ export class StartScene extends Phaser.Scene {
           -btnWidth / 2,
           -btnHeight / 2,
           btnWidth,
-          btnHeight
+          btnHeight,
         ),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true,
@@ -154,92 +161,12 @@ export class StartScene extends Phaser.Scene {
         this.sound.play("sfx_button");
         this.scene.start("BubbleStyleScene");
       });
-    } else {
-      // LOCKED: Show STYLE button disabled with credits badge
-      const unlockBtnContainer = this.add.container(width / 2, styleBtnY);
-
-      const unlockBtnShadow = this.add.graphics();
-      unlockBtnShadow.fillStyle(0x000000, 1);
-      unlockBtnShadow.fillRoundedRect(
-        -btnWidth / 2 + 8,
-        -btnHeight / 2 + 8,
-        btnWidth,
-        btnHeight,
-        15
-      );
-
-      const unlockBtnBg = this.add.graphics();
-      unlockBtnBg.fillStyle(0x4a2666, 1); // Darker purple (disabled look)
-      unlockBtnBg.fillRoundedRect(
-        -btnWidth / 2,
-        -btnHeight / 2,
-        btnWidth,
-        btnHeight,
-        15
-      );
-
-      const unlockBtnText = this.add
-        .text(0, 0, `STYLE`, {
-          fontFamily: "Pixelify Sans",
-          fontSize: "42px",
-          color: "#888888", // Grayed out text
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
-
-      unlockBtnContainer.add([unlockBtnShadow, unlockBtnBg, unlockBtnText]);
-
-      // Credits Badge
-      const badgeBg = this.add.graphics();
-      badgeBg.fillStyle(0xffd700, 1); // Gold color
-      badgeBg.lineStyle(3, 0x000000, 1); // Black border
-      badgeBg.fillRoundedRect(-90, -20, 180, 40, 12);
-      badgeBg.strokeRoundedRect(-90, -20, 180, 40, 12);
-
-      const badgeText = this.add
-        .text(0, 0, "10 Credits", {
-          fontFamily: "Pixelify Sans",
-          fontSize: "26px",
-          color: "#000000",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
-
-      const creditsBadge = this.add.container(
-        width / 2,
-        styleBtnY + btnHeight / 2 + 12
-      );
-      creditsBadge.add([badgeBg, badgeText]);
-
-      unlockBtnContainer.setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(
-          -btnWidth / 2,
-          -btnHeight / 2,
-          btnWidth,
-          btnHeight
-        ),
-        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-        useHandCursor: true,
-      });
-
-      unlockBtnContainer.on("pointerdown", () => {
-        this.sound.play("sfx_button");
-        if (window.FarcadeSDK) {
-          (window.FarcadeSDK as any).purchase({ item: "exclusive-balls" });
-          (window.FarcadeSDK as any).onPurchaseComplete(
-            (success: { success: boolean }) => {
-              if (success) {
-                // Restart scene to refresh UI
-                this.scene.restart();
-              }
-            }
-          );
-        }
-      });
     }
 
-    // Power-ups Button (below Style)
-    const powerupsBtnY = styleBtnY + btnSpacing;
+    // Power-ups Button (below Style if shown, otherwise below Start)
+    const powerupsBtnY = hasBallStyles
+      ? styleBtnY + btnSpacing
+      : btnY + btnSpacing;
 
     const powerupsBtnContainer = this.add.container(width / 2, powerupsBtnY);
 
@@ -250,7 +177,7 @@ export class StartScene extends Phaser.Scene {
       -btnHeight / 2 + 8,
       btnWidth,
       btnHeight,
-      15
+      15,
     );
 
     const powerupsBtnBg = this.add.graphics();
@@ -260,7 +187,7 @@ export class StartScene extends Phaser.Scene {
       -btnHeight / 2,
       btnWidth,
       btnHeight,
-      15
+      15,
     );
 
     const powerupsBtnText = this.add
@@ -283,7 +210,7 @@ export class StartScene extends Phaser.Scene {
         -btnWidth / 2,
         -btnHeight / 2,
         btnWidth,
-        btnHeight
+        btnHeight,
       ),
       hitAreaCallback: Phaser.Geom.Rectangle.Contains,
       useHandCursor: true,
@@ -304,7 +231,7 @@ export class StartScene extends Phaser.Scene {
       width,
       overlayHeight,
       0x000000,
-      0.6
+      0.6,
     );
 
     this.add
@@ -318,7 +245,7 @@ export class StartScene extends Phaser.Scene {
           color: "#ffffff",
           align: "center",
           fontStyle: "bold",
-        }
+        },
       )
       .setOrigin(0.5);
   }

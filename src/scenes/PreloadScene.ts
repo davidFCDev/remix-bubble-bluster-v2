@@ -19,7 +19,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.spritesheet(
       "bootSprite",
       "https://remix.gg/blob/13e738d9-e135-454e-9d2a-e456476a0c5e/sprite-start-oVCq0bchsVLwbLqAPbLgVOrQqxcVh5.webp?Cbzd",
-      { frameWidth: 241, frameHeight: 345 }
+      { frameWidth: 241, frameHeight: 345 },
     );
   }
 
@@ -60,34 +60,9 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private loadRemainingAssets(): void {
-    // WebFont loader para fuentes
-    this.load.script(
-      "webfont",
-      "https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"
-    );
-
-    // Iniciar carga de fuentes cuando el script esté listo
-    this.load.on("filecomplete-script-webfont", () => {
-      // @ts-ignore
-      if (window.WebFont) {
-        // @ts-ignore
-        window.WebFont.load({
-          google: {
-            families: ["Pixelify Sans"],
-          },
-          active: () => {
-            console.log("Fonts loaded");
-            this.fontsLoaded = true;
-            this.checkTransition();
-          },
-          inactive: () => {
-            console.warn("Fonts failed to load");
-            this.fontsLoaded = true; // Continuar aunque falle
-            this.checkTransition();
-          },
-        });
-      }
-    });
+    // Font "Pixelify Sans" is loaded via <link> in index.html (Google Fonts — allowed)
+    // No need for WebFont loader from ajax.googleapis.com (blocked by platform)
+    this.fontsLoaded = true;
 
     // --- ASSETS PRIORITARIOS ---
     this.load.image("bg_start", GameSettings.assets.backgroundStart);
@@ -150,7 +125,7 @@ export function loadExtraAssets(scene: Phaser.Scene): Promise<void> {
       if (!scene.textures.exists(`bg_level_${i}`)) {
         scene.load.image(
           `bg_level_${i}`,
-          GameSettings.assets.backgroundsLevel[i]
+          GameSettings.assets.backgroundsLevel[i],
         );
         hasAssetsToLoad = true;
       }

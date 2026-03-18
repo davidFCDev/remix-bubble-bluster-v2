@@ -9,18 +9,32 @@ export class CharacterSelectScene extends Phaser.Scene {
   private charPreviewSprite!: Phaser.GameObjects.Sprite;
   private charPreviewContainer!: Phaser.GameObjects.Container;
   private selectBtn!: Phaser.GameObjects.Container;
-  private unlockBtn!: Phaser.GameObjects.Container;
-  private creditsBadge!: Phaser.GameObjects.Container;
   private epicBadge!: Phaser.GameObjects.Text;
+  private unlockBadge!: Phaser.GameObjects.Container;
+  private btnText!: Phaser.GameObjects.Text;
+  private btnBg!: Phaser.GameObjects.Graphics;
   private btnY!: number;
   private cardHeight!: number;
+  private epicCharUnlocked: boolean = false;
 
   constructor() {
     super("CharacterSelectScene");
   }
 
-  create() {
+  async create() {
     const { width, height } = this.cameras.main;
+
+    // Fullscreen tall-screen offset (see ASPECT-RATIO-GUIDE.md)
+    const topOffset: number = this.registry.get("topOffset") || 0;
+
+    // Check if epic character is already owned
+    if (window.RemixSDK) {
+      try {
+        this.epicCharUnlocked = await window.RemixSDK.hasItem("epic-character");
+      } catch {
+        this.epicCharUnlocked = false;
+      }
+    }
 
     // Create Animations first
     this.createAnimations();
@@ -30,7 +44,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Title
     this.add
-      .text(width / 2, height * 0.1, "CHOOSE YOUR\nCHARACTER", {
+      .text(width / 2, height * 0.1 + topOffset, "CHOOSE YOUR\nCHARACTER", {
         fontFamily: "Pixelify Sans",
         fontSize: "48px",
         color: "#B7FF00", // Neon Green
@@ -57,14 +71,14 @@ export class CharacterSelectScene extends Phaser.Scene {
       -cardHeight / 2,
       cardWidth,
       cardHeight,
-      20
+      20,
     );
     cardBg.strokeRoundedRect(
       -cardWidth / 2,
       -cardHeight / 2,
       cardWidth,
       cardHeight,
-      20
+      20,
     );
 
     this.charPreviewContainer = this.add.container(cardX, cardY, [cardBg]);
@@ -80,13 +94,13 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     if (this.charPreviewSprite.texture) {
       this.charPreviewSprite.texture.setFilter(
-        Phaser.Textures.FilterMode.NEAREST
+        Phaser.Textures.FilterMode.NEAREST,
       );
     }
 
     this.charPreviewSprite.play(
       `${GameSettings.characters[0].id}_idle_anim`,
-      true
+      true,
     );
 
     // Character Info
@@ -142,14 +156,14 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.selectBtn = this.add.container(0, this.btnY);
 
     // Button Background (Rounded Graphics)
-    const btnBg = this.add.graphics();
-    btnBg.fillStyle(0xb7ff00, 1); // Neon Green
-    btnBg.fillRoundedRect(
+    this.btnBg = this.add.graphics();
+    this.btnBg.fillStyle(0xb7ff00, 1); // Neon Green
+    this.btnBg.fillRoundedRect(
       -btnWidth / 2,
       -btnHeight / 2,
       btnWidth,
       btnHeight,
-      15
+      15,
     );
     // No stroke
 
@@ -158,7 +172,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       -btnWidth / 2,
       -btnHeight / 2,
       btnWidth,
-      btnHeight
+      btnHeight,
     );
     this.selectBtn.setInteractive({
       hitArea: hitArea,
@@ -166,7 +180,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       useHandCursor: true,
     });
 
-    const btnText = this.add
+    this.btnText = this.add
       .text(0, 0, "SELECT", {
         fontFamily: "Pixelify Sans",
         fontSize: "36px",
@@ -175,77 +189,12 @@ export class CharacterSelectScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.selectBtn.add([btnBg, btnText]);
+    this.selectBtn.add([this.btnBg, this.btnText]);
 
     this.selectBtn.on("pointerdown", () => {
       this.sound.play("sfx_button");
       this.selectCharacter();
     });
-
-    // UNLOCK Button (for locked characters)
-    this.unlockBtn = this.add.container(0, this.btnY);
-
-    const unlockBtnBg = this.add.graphics();
-    unlockBtnBg.fillStyle(0x8b00ff, 1); // Purple color for unlock
-    unlockBtnBg.fillRoundedRect(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight,
-      15
-    );
-
-    const unlockHitArea = new Phaser.Geom.Rectangle(
-      -btnWidth / 2,
-      -btnHeight / 2,
-      btnWidth,
-      btnHeight
-    );
-    this.unlockBtn.setInteractive({
-      hitArea: unlockHitArea,
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-      useHandCursor: true,
-    });
-
-    const unlockBtnText = this.add
-      .text(0, 0, "UNLOCK", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "36px",
-        color: "#FFFFFF",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    this.unlockBtn.add([unlockBtnBg, unlockBtnText]);
-
-    this.unlockBtn.on("pointerdown", () => {
-      this.sound.play("sfx_button");
-      this.purchaseCharacter();
-    });
-
-    // Credits Badge (positioned to overlap unlock button slightly)
-    this.creditsBadge = this.add.container(0, this.btnY + btnHeight / 2 + 12);
-
-    const badgeBg = this.add.graphics();
-    badgeBg.fillStyle(0xffd700, 1); // Gold color
-    badgeBg.lineStyle(3, 0x000000, 1); // Black border
-    badgeBg.fillRoundedRect(-90, -20, 180, 40, 12);
-    badgeBg.strokeRoundedRect(-90, -20, 180, 40, 12);
-
-    const badgeText = this.add
-      .text(0, 0, "500 Credits", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "26px",
-        color: "#000000",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    this.creditsBadge.add([badgeBg, badgeText]);
-
-    // Initially hide unlock elements
-    this.unlockBtn.setVisible(false);
-    this.creditsBadge.setVisible(false);
 
     // Epic Badge (shown only for WitchKitty)
     this.epicBadge = this.add
@@ -258,6 +207,36 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.epicBadge.setVisible(false);
 
+    // "Unlock in Store" badge (shown instead of SELECT when locked)
+    this.unlockBadge = this.add.container(0, this.btnY);
+    const badgeBg = this.add.graphics();
+    badgeBg.fillStyle(0x333333, 0.9);
+    badgeBg.fillRoundedRect(-140, -30, 280, 60, 12);
+    badgeBg.lineStyle(2, 0x8b00ff, 1);
+    badgeBg.strokeRoundedRect(-140, -30, 280, 60, 12);
+    const badgeText = this.add
+      .text(0, 0, "Unlock in Store", {
+        fontFamily: "Pixelify Sans",
+        fontSize: "30px",
+        color: "#8B00FF",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+    this.unlockBadge.add([badgeBg, badgeText]);
+    this.unlockBadge.setVisible(false);
+
+    // Make badge interactive to trigger purchase
+    const badgeHitArea = new Phaser.Geom.Rectangle(-140, -30, 280, 60);
+    this.unlockBadge.setInteractive({
+      hitArea: badgeHitArea,
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+    this.unlockBadge.on("pointerdown", () => {
+      this.sound.play("sfx_button");
+      this.selectCharacter();
+    });
+
     // Removed hover effects as requested
 
     this.charPreviewContainer.add([
@@ -268,8 +247,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.charSkillNameText,
       this.charSkillDescText,
       this.selectBtn,
-      this.unlockBtn,
-      this.creditsBadge,
+      this.unlockBadge,
     ]);
 
     // Navigation Arrows
@@ -348,85 +326,46 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.charPreviewSprite.setScale(charScale);
     if (this.charPreviewSprite.texture) {
       this.charPreviewSprite.texture.setFilter(
-        Phaser.Textures.FilterMode.NEAREST
+        Phaser.Textures.FilterMode.NEAREST,
       );
     }
     this.charPreviewSprite.play(`${char.id}_idle_anim`);
 
-    // Check if character is locked (WitchKitty requires purchase)
-    const isLocked = char.id === "WitchKitty" && !this.hasEpicCharacter();
     const isEpicCharacter = char.id === "WitchKitty";
-
-    // Update sprite transparency based on lock status
-    this.charPreviewSprite.setAlpha(isLocked ? 0.4 : 1);
-
-    // Toggle buttons visibility
-    this.selectBtn.setVisible(!isLocked);
-    this.unlockBtn.setVisible(isLocked);
-    this.creditsBadge.setVisible(isLocked);
+    const isLocked = isEpicCharacter && !this.epicCharUnlocked;
 
     // Show Epic badge only for WitchKitty
     this.epicBadge.setVisible(isEpicCharacter);
+
+    // Darken sprite when locked (no lock icon, just darker)
+    this.charPreviewSprite.setTint(isLocked ? 0x555555 : 0xffffff);
+    this.charPreviewSprite.setAlpha(isLocked ? 0.6 : 1);
+
+    // Toggle SELECT button vs "Unlock in Store" badge
+    this.selectBtn.setVisible(!isLocked);
+    this.unlockBadge.setVisible(isLocked);
   }
 
-  hasEpicCharacter(): boolean {
-    // Check if player has purchased the epic character via SDK
-    return (
-      window.FarcadeSDK?.purchasedItems?.includes("new-epic-character") ?? false
-    );
-  }
-
-  purchaseCharacter() {
-    if (window.FarcadeSDK) {
-      // Intentar usar la promesa si existe (definición en globals.d.ts)
-      const purchaseResult = window.FarcadeSDK.purchase?.({
-        item: "new-epic-character",
-      });
-
-      if (purchaseResult && typeof purchaseResult.then === "function") {
-        purchaseResult
-          .then((result) => {
-            if (result && result.success) {
-              this.handlePurchaseSuccess();
-            }
-          })
-          .catch(console.error);
-      }
-
-      // Fallback: Listener para purchase completion (soporta ambos formatos observados)
-      if (window.FarcadeSDK.onPurchaseComplete) {
-        window.FarcadeSDK.onPurchaseComplete((data: any) => {
-          // Puede venir como string (itemId) o objeto { success: true }
-          const isSuccess =
-            data === "new-epic-character" ||
-            data === true ||
-            data?.success === true;
-
-          if (isSuccess) {
-            this.handlePurchaseSuccess();
-          }
-        });
-      }
-    }
-  }
-
-  private handlePurchaseSuccess() {
-    // Asegurar que el item está en la lista localmente para actualización inmediata
-    if (window.FarcadeSDK) {
-      if (!window.FarcadeSDK.purchasedItems) {
-        window.FarcadeSDK.purchasedItems = [];
-      }
-      if (!window.FarcadeSDK.purchasedItems.includes("new-epic-character")) {
-        window.FarcadeSDK.purchasedItems.push("new-epic-character");
-      }
-    }
-
-    // Refrescar la UI
-    this.updateCharacterDisplay();
-  }
-
-  selectCharacter() {
+  async selectCharacter() {
     const selectedChar = GameSettings.characters[this.currentIndex];
+    const isLocked = selectedChar.id === "WitchKitty" && !this.epicCharUnlocked;
+
+    if (isLocked) {
+      // Trigger SDK purchase flow
+      if (!window.RemixSDK) return;
+      try {
+        const result = await window.RemixSDK.purchaseItem("epic-character");
+        if (result?.success) {
+          this.epicCharUnlocked = true;
+          if (window.RemixSDK) window.RemixSDK.hapticFeedback();
+          this.updateCharacterDisplay();
+        }
+      } catch {
+        // Purchase cancelled or failed — do nothing
+      }
+      return;
+    }
+
     this.scene.start("GameScene", { character: selectedChar });
   }
 }

@@ -15,6 +15,9 @@ export class BubbleStyleScene extends Phaser.Scene {
   create() {
     const { width, height } = this.cameras.main;
 
+    // Fullscreen tall-screen offset (see ASPECT-RATIO-GUIDE.md)
+    const topOffset: number = this.registry.get("topOffset") || 0;
+
     // Background
     this.add
       .image(width / 2, height / 2, "bg_start")
@@ -25,7 +28,7 @@ export class BubbleStyleScene extends Phaser.Scene {
 
     // Title - positioned to match distance between style name and bubbles
     this.add
-      .text(width / 2, height * 0.18, "BUBBLE STYLE", {
+      .text(width / 2, height * 0.18 + topOffset, "BUBBLE STYLE", {
         fontFamily: "Pixelify Sans",
         fontSize: "64px",
         color: "#B7FF00",
@@ -110,7 +113,7 @@ export class BubbleStyleScene extends Phaser.Scene {
       -btnHeight / 2 + 6,
       btnWidth,
       btnHeight,
-      12
+      12,
     );
 
     const btnBg = this.add.graphics();
@@ -120,7 +123,7 @@ export class BubbleStyleScene extends Phaser.Scene {
       -btnHeight / 2,
       btnWidth,
       btnHeight,
-      12
+      12,
     );
 
     const btnText = this.add
@@ -138,7 +141,7 @@ export class BubbleStyleScene extends Phaser.Scene {
         -btnWidth / 2,
         -btnHeight / 2,
         btnWidth,
-        btnHeight
+        btnHeight,
       ),
       hitAreaCallback: Phaser.Geom.Rectangle.Contains,
       useHandCursor: true,
@@ -151,7 +154,7 @@ export class BubbleStyleScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-RIGHT", () => this.navigate(1));
     this.input.keyboard?.on("keydown-ENTER", () => this.selectStyle());
     this.input.keyboard?.on("keydown-ESC", () =>
-      this.scene.start("StartScene")
+      this.scene.start("StartScene"),
     );
 
     // Generate textures if needed
@@ -187,7 +190,7 @@ export class BubbleStyleScene extends Phaser.Scene {
         0,
         70,
         color,
-        style.id
+        style.id,
       );
       this.previewContainer.add(bubble);
     });
