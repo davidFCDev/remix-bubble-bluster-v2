@@ -76,21 +76,15 @@ export class GameScene extends Phaser.Scene {
   private bubbleStyleIndex: number = 0; // Current bubble style index for cycling
 
   // Power-ups (one-time use per game)
-  private hasExtraLife: boolean = false;
-  private extraLifeUsed: boolean = false;
   private hasStopClock: boolean = false;
   private stopClockUsed: boolean = false;
   private stopClockActive: boolean = false;
   private hasFreeze: boolean = false;
   private freezeUsed: boolean = false;
   private freezeActive: boolean = false;
-  private levelStartScore: number = 0; // Score when level started (for extra life)
-
   // In-game unlock buttons
   private styleBtn!: Phaser.GameObjects.Container;
   private hasBallStyles: boolean = false;
-  private hasExtraLifeItem: boolean = false; // Owned via RemixSDK "extra-life"
-
   // Constants
   private BUBBLE_SIZE!: number;
   private GRID_WIDTH = GameSettings.grid.width;
@@ -122,15 +116,12 @@ export class GameScene extends Phaser.Scene {
     this.recentColors = []; // Reset recent colors tracking
 
     // Initialize power-ups
-    this.hasExtraLife = false;
-    this.extraLifeUsed = false;
     this.hasStopClock = true;
     this.stopClockUsed = false;
     this.stopClockActive = false;
     this.hasFreeze = true;
     this.freezeUsed = false;
     this.freezeActive = false;
-    this.levelStartScore = 0;
   }
 
   async create() {
@@ -143,16 +134,6 @@ export class GameScene extends Phaser.Scene {
         this.hasBallStyles = await window.RemixSDK.hasItem("ball-styles");
       } catch {
         this.hasBallStyles = false;
-      }
-      try {
-        this.hasExtraLifeItem = await window.RemixSDK.hasItem("extra-life");
-      } catch {
-        this.hasExtraLifeItem = false;
-      }
-      // Grant extra life if player owns the item
-      if (this.hasExtraLifeItem) {
-        this.hasExtraLife = true;
-        this.extraLifeUsed = false;
       }
     }
 
@@ -282,9 +263,6 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Power-up hotkeys
-      this.input.keyboard.on("keydown-ONE", () =>
-        this.activatePowerup("extraLife"),
-      );
       this.input.keyboard.on("keydown-TWO", () =>
         this.activatePowerup("stopClock"),
       );
@@ -697,9 +675,6 @@ export class GameScene extends Phaser.Scene {
   startLevel() {
     // Set Random Background
     this.setRandomBackground();
-
-    // Save score at level start (for Extra Life)
-    this.levelStartScore = this.score;
 
     // Reset power-up effects for this level
     this.stopClockActive = false;
@@ -2697,12 +2672,6 @@ export class GameScene extends Phaser.Scene {
   handleGameOver(message: string) {
     if (this.gameOver) return;
 
-    // If player has extra life available, use it instead of game over
-    if (this.hasExtraLife && !this.extraLifeUsed) {
-      this.useExtraLife();
-      return;
-    }
-
     this.gameOver = true;
     if (this.timerEvent) this.timerEvent.remove();
     this.playSound("sfx_game_over");
@@ -2718,63 +2687,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Use the Extra Life power-up to restart the current level
-   */
-  useExtraLife() {
-    this.extraLifeUsed = true;
-    this.hasExtraLife = false;
-
-    // Pause gameplay so player can't shoot during the animation
-    this.gameStarted = false;
-    this.canShoot = false;
-
-    // Remove current bubble so it doesn't stay visible
-    if (this.currentBubble && this.currentBubble.sprite) {
-      this.currentBubble.sprite.destroy();
-      this.currentBubble = null;
-    }
-
-    // Show revival message
-    const { width, height } = this.cameras.main;
-    const reviveText = this.add
-      .text(width / 2, height / 2, "❤️ EXTRA LIFE! ❤️", {
-        fontFamily: "Pixelify Sans",
-        fontSize: "48px",
-        color: "#FF4444",
-        stroke: "#000000",
-        strokeThickness: 6,
-      })
-      .setOrigin(0.5)
-      .setDepth(200);
-
-    this.tweens.add({
-      targets: reviveText,
-      alpha: 0,
-      y: height / 2 - 100,
-      duration: 2000,
-      onComplete: () => {
-        reviveText.destroy();
-        // Restart the level with the starting score
-        this.restartLevel();
-      },
-    });
-  }
-
-  /**
-   * Restart the current level (used by Extra Life)
-   */
-  restartLevel() {
-    // Reset game state but keep level
-    this.score = this.levelStartScore;
-    this.gameOver = false;
-    this.gameStarted = false;
-    this.canShoot = true;
-
-    // Call startLevel which handles everything
-    this.startLevel();
-  }
-
-  /**
    * Activate a power-up by ID
    */
   activatePowerup(powerupId: string) {
@@ -2783,13 +2695,6 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
 
     switch (powerupId) {
-      case "extraLife":
-        // Extra life is passive - activates on game over
-        if (this.hasExtraLife && !this.extraLifeUsed) {
-          this.showPowerupMessage("EXTRA LIFE READY!");
-        }
-        break;
-
       case "stopClock":
         if (this.hasStopClock && !this.stopClockUsed && !this.stopClockActive) {
           this.stopClockUsed = true;

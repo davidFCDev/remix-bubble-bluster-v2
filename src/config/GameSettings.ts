@@ -57,15 +57,6 @@ export const GameSettings = {
   ],
   powerups: [
     {
-      id: "extraLife",
-      name: "Extra Life",
-      icon: "❤️",
-      description:
-        "On game over, restart the current level with your starting score",
-      unlocked: false,
-      cost: 100,
-    },
-    {
       id: "stopClock",
       name: "Stop Clock",
       icon: "⏱️",
